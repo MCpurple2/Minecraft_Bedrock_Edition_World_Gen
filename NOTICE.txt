@@ -11,7 +11,7 @@ See the core source and research notes for the actual reconstruction status.
 
 Project license: Apache-2.0 for original contributions. See LICENSE.
 The corresponding project source and Gradle build files for this release are
-distributed in the source archive directory 'source/Build 3.5 IWBUMS/'.
+distributed in the source archive directory 'source/Build 1.0 IWBUMS/'.
 
 Moderner Beta licensing and credits
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/87c015b63e8618795dbeafe41166a3818eb81f8f/README.md#license
