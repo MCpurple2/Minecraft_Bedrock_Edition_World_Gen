@@ -21,7 +21,7 @@ public final class PeCustomizeScreen extends Screen {
     private boolean old;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
-        super(Text.literal("MCPE Alpha"));
+        super(Text.translatable("generator.pe_worldgen.mcpe_alpha"));
         this.parent = parent;
         old = options.selectedDimensions().getChunkGenerator() instanceof PeChunkGenerator generator && generator.isOld();
     }
@@ -51,7 +51,7 @@ public final class PeCustomizeScreen extends Screen {
         boolean selectedOld = old;
         parent.getWorldCreator().applyModifier((registries, dimensions) -> {
             var previous = dimensions.dimensions().get(DimensionOptions.OVERWORLD);
-            if (previous == null) throw new IllegalStateException("Missing overworld in MCPE Alpha preset");
+            if (previous == null) throw new IllegalStateException("Missing overworld in Pocket Edition Alpha preset");
             var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld);
             var updated = new LinkedHashMap<>(dimensions.dimensions());
             // Preserve the PE dimension type (0..127) and all other dimensions.

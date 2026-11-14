@@ -5,14 +5,14 @@ package net.mcpe.worldgen.core;
  * Native anchors (Ghidra VA, image base 0x10000): constructor 001d70e0,
  * getHeights 001cbaf4, prepareHeights 001e6598, loadChunk 001e6994,
  * buildSurfaces 001e68d0, Biome::buildSurfaceAtDefault 001ccd00.
- * This initial port covers base density/interpolation and the common surface pass.
- * Caves, structures, population, biome-specific surface overrides and the original
- * spawn-relative Old-world boundary anchor are not yet ported. See STATUS.txt.
+ * Produces density, the common surface pass and infinite-world caves.
+ * PePopulation supplies the subsequent structures and biome decoration.
  */
 public final class PeWorldGenerator {
     public static final int HEIGHT = 128;
     public static final int SEA_LEVEL = 63;
     private final boolean old;
+    private final PeCaves caves;
     private final PeBiomes biomes;
     private final PeOctaveNoise lower, upper, selector, depth;
     private final PeSimplexOctaves surface;
@@ -25,6 +25,7 @@ public final class PeWorldGenerator {
 
     public PeWorldGenerator(long seed, boolean old) {
         this.old = old;
+        caves = old ? null : new PeCaves(seed);
         PeRandom random = new PeRandom(seed);
         lower = new PeOctaveNoise(random, 16);
         upper = new PeOctaveNoise(random, 16);
@@ -54,6 +55,7 @@ public final class PeWorldGenerator {
         float[] densities = densities(chunkX, chunkZ);
         interpolate(blocks, densities);
         buildCommonSurface(blocks, chunkX, chunkZ);
+        if (caves != null) caves.carve(blocks, chunkX, chunkZ);
         return blocks;
     }
 
@@ -154,7 +156,15 @@ public final class PeWorldGenerator {
         return density > 0 ? (byte) 1 : y < SEA_LEVEL ? (byte) 9 : 0;
     }
 
-    private void buildCommonSurface(byte[] blocks, int chunkX, int chunkZ) {
+    /** TLS state for lake placement when postProcess immediately follows loadChunk. */
+    public synchronized PeRandom lakeRandom(int chunkX,int chunkZ) {
+        if (caves!=null) return caves.lastSourceRandom(chunkX,chunkZ);
+        byte[] blocks=new byte[16*16*HEIGHT];
+        interpolate(blocks,densities(chunkX,chunkZ));
+        return buildCommonSurface(blocks,chunkX,chunkZ);
+    }
+
+    private PeRandom buildCommonSurface(byte[] blocks, int chunkX, int chunkZ) {
         float[] noise = surface.getRegion2D(null, chunkX * 16, chunkZ * 16, 16, 16, 0.0625f, 0.0625f, 1.0f);
         int[] ids = biomes.zoomedArea(chunkX * 16, chunkZ * 16, 16, 16);
         PeRandom random = new PeRandom(chunkX * 0x14609048 + chunkZ * 0x07ebe2d5);
@@ -189,10 +199,12 @@ public final class PeWorldGenerator {
                 }
             }
         }
+        return random;
     }
 
     private static boolean cold(int id) { return id == 10 || id == 11 || id == 12 || id == 13 || id == 26 || id == 30 || id == 31 || id == 140 || id == 158; }
     private static int top(int id) {
+        if (id == 140) return 80;
         if (id == 2 || id == 17 || id == 16 || id == 26 || id == 130) return 12;
         if (id == 14 || id == 15) return 110;
         if (id == 25) return 1;

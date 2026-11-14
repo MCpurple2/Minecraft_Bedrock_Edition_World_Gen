@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.mcpe.worldgen.core.PeWorldGenerator;
+import net.mcpe.worldgen.core.PePopulation;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.DynamicRegistryManager;
@@ -39,6 +40,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     private final boolean old;
     private volatile PeWorldGenerator engine;
     private volatile long worldSeed;
+    private volatile PePopulation population;
     private final Map<Long, byte[]> chunks = new LinkedHashMap<>(64, 0.75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, byte[]> eldest) { return size() > 128; }
     };
@@ -54,6 +56,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
         engine = new PeWorldGenerator(seed, old);
+        population = new PePopulation(seed,old,engine);
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine);
         chunks.clear();
         // Do not run Java stronghold-ring biome searches for a PE-only generator.
@@ -90,7 +93,13 @@ public final class PeChunkGenerator extends ChunkGenerator {
 
     @Override public void buildSurface(ChunkRegion region, StructureAccessor structures, NoiseConfig noise, Chunk chunk) {}
     @Override public void carve(ChunkRegion region, long seed, NoiseConfig noise, BiomeAccess access, StructureAccessor structures, Chunk chunk) {}
-    @Override public void generateFeatures(StructureWorldAccess world, Chunk chunk, StructureAccessor structures) {}
+    @Override public void generateFeatures(StructureWorldAccess world, Chunk chunk, StructureAccessor structures) {
+        PePopulation current=population;
+        if(current==null)throw new IllegalStateException("PE population used before world seed initialization");
+        boolean enabled=world.toServerWorld().getServer().getSaveProperties().getGeneratorOptions().shouldGenerateStructures();
+        // Serialize PE's neighboring feature writes without holding the base-generation lock.
+        synchronized(current){current.populate(new FabricPopulationWorld(world,engine(),old),chunk.getPos().x,chunk.getPos().z,enabled);}
+    }
     @Override public void populateEntities(ChunkRegion region) {}
     @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {}
     @Override public void setStructureStarts(DynamicRegistryManager registries, StructurePlacementCalculator placements,

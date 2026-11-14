@@ -40,6 +40,14 @@ public final class PeRandom {
         return nextRawInt() >>> 1;
     }
 
+    /** C++ Random-by-value semantics used by native stronghold piece selection. */
+    public PeRandom copy() {
+        PeRandom copy=new PeRandom(0);
+        System.arraycopy(state,0,copy.state,0,state.length);
+        copy.index=index;
+        return copy;
+    }
+
     public int nextInt(int bound) {
         if (bound <= 0) throw new IllegalArgumentException("bound must be positive");
         return (int) (Integer.toUnsignedLong(nextRawInt()) % bound);
