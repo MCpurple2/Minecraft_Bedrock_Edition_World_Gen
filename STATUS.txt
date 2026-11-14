@@ -1,5 +1,7 @@
-Pocket Edition Alpha Build 2.0 IWBUMS
+Pocket Edition Alpha Build 2.1 IWBUMS
 Minecraft Java 1.21.11 · Fabric · PE Alpha 0.11.1 主世界
+
+Build 2.1 修复了打开“自定义”界面时同一帧重复渲染背景模糊导致的崩溃。
 
 安装与创建
 将本版 pe-worldgen JAR 和适用于 1.21.11 的 Fabric API 放入 mods 文件夹，替换此前的 pe-worldgen JAR。
