@@ -1,1 +1,1 @@
-# Minecraft_Pocket_Edition_Alpha_World_Gen
+# Minecraft_Bedrock_Edition_World_Generator
