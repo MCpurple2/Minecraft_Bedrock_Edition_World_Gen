@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "pe_worldgen",
+  "version": "${version}",
+  "name": "Pocket Edition World Generator",
+  "description": "Experimental PE 0.11.1 world generator port. See research notes for fidelity limits.",
+  "environment": "*",
+  "entrypoints": { "main": ["net.mcpe.worldgen.fabric.PeWorldgenMod"] },
+  "depends": { "fabricloader": ">=0.18.0", "fabric-api": "*", "minecraft": "~1.21.11", "java": ">=21" }
+}

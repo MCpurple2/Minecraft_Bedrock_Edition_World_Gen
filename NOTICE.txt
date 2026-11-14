@@ -1,0 +1,10 @@
+PE Worldgen: experimental PE 0.11.1 research port
+
+Fabric adapter written for this project. Moderner Beta was consulted for its
+separation of historical generation from modern Minecraft integration; it is
+not a runtime dependency. No Moderner Beta implementation was copied into
+this adapter. The Gradle wrapper launcher is from the Moderner Beta repository
+(Gradle's Apache-2.0-licensed wrapper).
+
+This project does not bundle the Minecraft Pocket Edition APK or native library.
+See the core source and research notes for the actual reconstruction status.
