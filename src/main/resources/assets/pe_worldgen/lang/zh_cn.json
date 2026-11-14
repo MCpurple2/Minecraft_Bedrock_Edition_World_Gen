@@ -1,4 +1,9 @@
 {
-  "generator.pe_worldgen.pe_0111_infinite": "PE 0.11.1 无限世界（实验）",
-  "generator.pe_worldgen.pe_0111_old": "PE 0.11.1 旧世界（实验）"
+  "generator.pe_worldgen.mcpe_alpha": "MCPE Alpha",
+  "generator.pe_worldgen.pe_0111_infinite": "MCPE Alpha",
+  "generator.pe_worldgen.pe_0111_old": "MCPE Alpha",
+  "pe_worldgen.customize.version": "版本预设",
+  "pe_worldgen.customize.world_type": "世界范围",
+  "pe_worldgen.customize.infinite": "无限世界",
+  "pe_worldgen.customize.old": "旧世界（256×256）"
 }

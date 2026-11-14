@@ -15,4 +15,9 @@ processResources {
 }
 tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
 java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21; withSourcesJar() }
-jar { from('NOTICE.txt') }
+['jar', 'sourcesJar'].each { taskName ->
+    tasks.named(taskName) {
+        from('LICENSE', 'NOTICE.txt')
+        from('LICENSES') { into 'LICENSES' }
+    }
+}

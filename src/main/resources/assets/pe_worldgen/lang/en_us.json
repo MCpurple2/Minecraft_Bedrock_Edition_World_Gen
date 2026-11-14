@@ -1,4 +1,9 @@
 {
-  "generator.pe_worldgen.pe_0111_infinite": "PE 0.11.1 Infinite (Experimental)",
-  "generator.pe_worldgen.pe_0111_old": "PE 0.11.1 Old (Experimental)"
+  "generator.pe_worldgen.mcpe_alpha": "MCPE Alpha",
+  "generator.pe_worldgen.pe_0111_infinite": "MCPE Alpha",
+  "generator.pe_worldgen.pe_0111_old": "MCPE Alpha",
+  "pe_worldgen.customize.version": "Version preset",
+  "pe_worldgen.customize.world_type": "World size",
+  "pe_worldgen.customize.infinite": "Infinite",
+  "pe_worldgen.customize.old": "Old (256×256)"
 }

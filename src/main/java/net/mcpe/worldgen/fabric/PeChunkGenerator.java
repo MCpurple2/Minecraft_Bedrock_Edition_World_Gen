@@ -48,6 +48,8 @@ public final class PeChunkGenerator extends ChunkGenerator {
         this.old = old;
     }
 
+    public boolean isOld() { return old; }
+
     @Override
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
