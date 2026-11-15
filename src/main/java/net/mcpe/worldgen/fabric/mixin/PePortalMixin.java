@@ -18,6 +18,6 @@ abstract class PePortalMixin {
     private static void peWorldgen$allowFrame(WorldAccess access, BlockPos pos, Direction.Axis axis,
             CallbackInfoReturnable<Optional<NetherPortal>> result) {
         if (access instanceof ServerWorld world && world.getServer().getOverworld().getChunkManager().getChunkGenerator()
-                instanceof PeChunkGenerator pe && !pe.settings().allowPortals(pe.isOld())) result.setReturnValue(Optional.empty());
+                instanceof PeChunkGenerator pe && !pe.bedrock().allowPortals()) result.setReturnValue(Optional.empty());
     }
 }

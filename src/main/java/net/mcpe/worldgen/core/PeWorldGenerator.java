@@ -50,7 +50,7 @@ public final class PeWorldGenerator {
         this.nativeBiomeSeeds = nativeBiomeSeeds;
         this.worldSeed = seed;
         boolean reversedAxes = release.ordinal() >= PeRelease.V0_15_10.ordinal();
-        specialSurfaces = release==PeRelease.V0_11_1 ? null : new PeSpecialSurfaces(seed);
+        specialSurfaces = release == PeRelease.V0_11_1 ? null : new PeSpecialSurfaces(seed);
         caves = old ? null : new PeCaves(seed, false, reversedAxes);
         PeRandom random = new PeRandom(seed);
         lower = new PeOctaveNoise(random, 16);
@@ -80,8 +80,20 @@ public final class PeWorldGenerator {
     }
 
     private PeWorldBorderLocation border;
+    private boolean customBorder;
 
-    public synchronized PeWorldBorderLocation finiteBorder() {
+    /** Called before publishing this generator to chunk workers. Null means unbounded. */
+    public void configureBorder(PeWorldBorderLocation location) {
+        customBorder = true;
+        border = location;
+    }
+
+    public PeWorldBorderLocation finiteBorder() {
+        if (customBorder) return border;
+        return defaultBorder();
+    }
+
+    private synchronized PeWorldBorderLocation defaultBorder() {
         if (!old) return null;
         if (border == null) {
             Spawn anchor = useSpawnBounds ? initialSpawn() : new Spawn(0, 0, 0);
@@ -91,7 +103,8 @@ public final class PeWorldGenerator {
     }
 
     public boolean isInsideChunk(int chunkX, int chunkZ) {
-        return !old || finiteBorder().containsChunk(chunkX, chunkZ);
+        var bounds = finiteBorder();
+        return bounds == null || bounds.containsChunk(chunkX, chunkZ);
     }
 
     public int[] biomeArea(int x, int z, int width, int height) {
@@ -237,7 +250,7 @@ public final class PeWorldGenerator {
                 float n=noise[noiseIndex];
                 int wx=chunkX*16+x,wz=chunkZ*16+z;
                 if(PeSpecialSurfaces.mesa(biome)) {
-                    specialSurfaces.mesaColumn(blocks,metadata,base,wx,wz,biome,n,random);
+                    specialSurfaces.mesaColumn(blocks,metadata,base,wx,wz,biome,n,random,release.compareTo(PeRelease.V0_11_1) < 0);
                     continue;
                 }
                 if(biome==6 || biome==134) specialSurfaces.swamp(blocks,base,wx,wz);
@@ -254,10 +267,16 @@ public final class PeWorldGenerator {
             }
             int top = originalTop, filler = originalFiller;
             int thickness = (int)(noise[noiseIndex] * 0.33333334f + 3.0f + random.nextFloat() * 0.25f);
-            int bedrockHeight = (random.nextRawInt() & 3) + 2;
+            // Early Alpha rolls for bedrock at every Y, including the air above terrain.
+            boolean earlyBedrock = release.compareTo(PeRelease.V0_11_1) < 0;
+            int bedrockHeight = earlyBedrock ? 0 : (random.nextRawInt() & 3) + 2;
             for (int y = 0; y < bedrockHeight; y++) blocks[base + y] = 7;
             int remaining = -1;
             for (int y = 127; y >= bedrockHeight; y--) {
+                if (earlyBedrock && y <= random.nextInt(5)) {
+                    blocks[base + y] = 7;
+                    continue;
+                }
                 int id = Byte.toUnsignedInt(blocks[base + y]);
                 if (id == 0) { remaining = -1; continue; }
                 if (id != 1) continue;

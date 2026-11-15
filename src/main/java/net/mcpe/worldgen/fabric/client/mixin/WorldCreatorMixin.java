@@ -43,8 +43,9 @@ public abstract class WorldCreatorMixin {
         preset.getKey().ifPresent(key -> {
             var id = key.getValue();
             // Keep the old preset IDs editable when recreating a previous world.
-            if (id.getNamespace().equals("pe_worldgen") && (id.getPath().equals("mcpe_alpha") || id.getPath().equals(PeRelease.V0_11_1.presetPath(true))
-                || Arrays.stream(PeRelease.values()).anyMatch(release -> id.getPath().equals(release.presetPath(false))))) result.setReturnValue(PeCustomizeScreen::new);
+            if (id.getNamespace().equals("pe_worldgen") && (id.getPath().equals("mcpe_alpha") || Arrays.stream(PeRelease.values()).anyMatch(release ->
+                id.getPath().equals(release.presetPath(true)) ||
+                release.supports(false) && id.getPath().equals(release.presetPath(false))))) result.setReturnValue(PeCustomizeScreen::new);
         });
     }
 }

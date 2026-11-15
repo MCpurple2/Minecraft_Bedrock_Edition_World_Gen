@@ -1,6 +1,7 @@
 package net.mcpe.worldgen.fabric.client;
 
 import net.mcpe.worldgen.core.PeRelease;
+import net.mcpe.worldgen.fabric.PeBedrockSettings;
 import net.mcpe.worldgen.fabric.PeContentSettings;
 import com.mojang.serialization.JsonOps;
 import com.google.gson.JsonObject;
@@ -26,6 +27,7 @@ final class PePresetTransferScreen extends Screen {
     private final PeRelease release;
     private final boolean old;
     private final PeContentSettings settings;
+    private final PeBedrockSettings bedrock;
     private final boolean pack;
     private TextFieldWidget field;
     private Text status = Text.empty();
@@ -33,17 +35,19 @@ final class PePresetTransferScreen extends Screen {
     private String draft;
     private Path exported;
 
-    PePresetTransferScreen(PeCustomizeScreen parent, boolean old, PeRelease release, PeContentSettings settings, boolean pack) {
+    PePresetTransferScreen(PeCustomizeScreen parent, boolean old, PeRelease release, PeContentSettings settings, PeBedrockSettings bedrock, boolean pack) {
         super(PeCustomizeScreen.label(pack ? "export_pack" : "quick"));
         this.parent = parent;
         this.old = old;
         this.release = release;
         this.pack = pack;
+        this.bedrock = bedrock;
         this.settings = settings;
         var json = new JsonObject();
         json.addProperty("version", release.id());
         json.addProperty("world_type", old ? "finite" : "infinite");
         json.add("java_content",PeContentSettings.CODEC.encodeStart(JsonOps.INSTANCE,settings).getOrThrow());
+        json.add("bedrock_features", PeBedrockSettings.CODEC.encodeStart(JsonOps.INSTANCE,bedrock).getOrThrow());
         encoded = json.toString();
         draft = encoded;
     }
@@ -81,9 +85,12 @@ final class PePresetTransferScreen extends Screen {
                     PeRelease imported = PeRelease.byId(json.get("version").getAsString()).orElseThrow();
                     PeContentSettings importedSettings = json.has("java_content")
                         ? PeContentSettings.CODEC.parse(JsonOps.INSTANCE,json.get("java_content")).getOrThrow() : PeContentSettings.DEFAULT;
+                    var importedBedrock = json.has("bedrock_features")
+                        ? PeBedrockSettings.CODEC.parse(JsonOps.INSTANCE,json.get("bedrock_features")).getOrThrow()
+                        : PeBedrockSettings.defaults(json.get("world_type").getAsString().equals("finite"), importedSettings.portalOverride());
                     switch (json.get("world_type").getAsString()) {
-                        case "finite" -> parent.importPreset(true, imported, importedSettings);
-                        case "infinite" -> parent.importPreset(false, imported, importedSettings);
+                        case "finite" -> parent.importPreset(true, imported, importedSettings, importedBedrock);
+                        case "infinite" -> parent.importPreset(false, imported, importedSettings, importedBedrock);
                         default -> throw new IllegalArgumentException();
                     }
                 } catch (RuntimeException ex) { status = PeCustomizeScreen.label("invalid"); }
@@ -118,6 +125,8 @@ final class PePresetTransferScreen extends Screen {
             var dims = data.getAsJsonObject("dimensions");
             dims.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").add("java_content",
                 PeContentSettings.CODEC.encodeStart(JsonOps.INSTANCE,settings).getOrThrow());
+            dims.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").add("bedrock_features",
+                PeBedrockSettings.CODEC.encodeStart(JsonOps.INSTANCE,bedrock).getOrThrow());
             if (settings.netherUpdate()) {
                 var gen = JsonParser.parseString("""
                     {"type":"minecraft:noise","settings":"minecraft:nether","biome_source":{"type":"minecraft:multi_noise","preset":"minecraft:nether"}}

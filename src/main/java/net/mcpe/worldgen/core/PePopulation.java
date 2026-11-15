@@ -49,7 +49,7 @@ public final class PePopulation {
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);
         int chunkSeed=seed(seed,cx,cz);
-        boolean later=core.release()!=PeRelease.V0_11_1;
+        boolean later=core.release().compareTo(PeRelease.V0_12_3) >= 0;
         PeRandom random=new PeRandom(chunkSeed);
         // 0.12 reseeds before lakes. 0.11 inherits the preceding native TLS terrain RNG.
         lakes(world,later?random:core.lakeRandom(cx,cz),biome,bx,bz);
@@ -70,7 +70,7 @@ public final class PePopulation {
         PeDecorationSettings settings=biomeSettings.computeIfAbsent(biome,PeDecorationSettings::fromBiome);
         PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings);
         PeOres.decorate(world,random,bx,bz);
-        PeBiomeExtras.mesaOres(world,random,biome,bx,bz);
+        if (core.release().compareTo(PeRelease.V0_10_2) >= 0) PeBiomeExtras.mesaOres(world,random,biome,bx,bz);
         PeSurfacePatches.decorate(world,random,bx,bz,settings.sand,settings.clay,settings.gravel);
         int grass=settings.grass;
         if(settings.treeDensity>0.0f) {

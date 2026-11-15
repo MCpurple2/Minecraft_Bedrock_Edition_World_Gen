@@ -36,15 +36,17 @@ final class PeBiomePreviewScreen extends Screen {
     private final int[] biomes;
     private boolean registered;
 
-    PeBiomePreviewScreen(Screen parent, long seed, boolean old, PeRelease release, PeContentSettings settings) {
+    PeBiomePreviewScreen(Screen parent, long seed, boolean old, PeRelease release, PeContentSettings settings, net.mcpe.worldgen.fabric.PeBedrockSettings bedrock) {
         super(PeCustomizeScreen.label("preview"));
         this.parent = parent;
         this.seed = seed;
         var generator = new PeWorldGenerator(seed, old, true, true, release);
         var spawn = generator.initialSpawn();
-        extent = old ? 256 : 512;
-        originX = (spawn.x() & ~15) - extent / 2;
-        originZ = (spawn.z() & ~15) - extent / 2;
+        bedrock.configure(generator, true);
+        var bounds = generator.finiteBorder();
+        extent = bounds == null ? 512 : Math.min(512, bounds.width());
+        originX = (bounds == null ? spawn.x() & ~15 : bounds.centerX()) - extent / 2;
+        originZ = (bounds == null ? spawn.z() & ~15 : bounds.centerZ()) - extent / 2;
         int margin=36, stride=extent+2*margin;
         int[] raw=generator.biomeArea(originX-margin,originZ-margin,stride,stride);
         var climate=new PeOceanClimate(seed);
@@ -52,7 +54,7 @@ final class PeBiomePreviewScreen extends Screen {
         biomes=new int[extent*extent];
         for(int z=0; z<extent; z+=4) for(int x=0; x<extent; x+=4) {
             int qx=(originX+x)>>2,qz=(originZ+z)>>2,id=sample.applyAsInt(qx,qz);
-            String name=old && generator.finiteBorder().outsideBiomeCell(qx,qz) ? "the_void" : climate.biome(id,qx,qz,settings,sample);
+            String name=bounds != null && bounds.outsideBiomeCell(qx,qz) ? "the_void" : climate.biome(id,qx,qz,settings,sample);
             int value=name==null?id:256+OVERLAYS.indexOf(name);
             for(int dz=0;dz<4;dz++) java.util.Arrays.fill(biomes,(z+dz)*extent+x,(z+dz)*extent+x+4,value);
         }

@@ -37,11 +37,11 @@ public final class PeOres {
     }
     // The 0.12 decorator increases each configured vein size alongside the exclusive step bound.
     private static int decoratorSize(PePopulationWorld world, int originalSize) {
-        return world.release() == PeRelease.V0_11_1 ? originalSize : originalSize + 1;
+        return world.release().compareTo(PeRelease.V0_12_3) < 0 ? originalSize : originalSize + 1;
     }
     public static void place(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int size) {
         boolean floorBounds = w.release().compareTo(PeRelease.V0_13_2) >= 0;
-        boolean later = w.release() != PeRelease.V0_11_1;
+        boolean later = w.release().compareTo(PeRelease.V0_12_3) >= 0;
         float angle=r.nextFloat()*32768.0f;
         float sin=PeMth.indexed((int)angle), cos=PeMth.indexed((int)(angle+16384.0f));
         float extent=(float)size*0.125f;

@@ -16,7 +16,6 @@ import net.minecraft.screen.ScreenTexts;
 
 final class PeContentScreen extends Screen {
     private final Screen parent;
-    private final boolean finite;
     private final Consumer<PeContentSettings> apply;
     private final EnumSet<Aquatic> water = EnumSet.noneOf(Aquatic.class);
     private final List<ClickableWidget> dependent = new ArrayList<>();
@@ -24,10 +23,9 @@ final class PeContentScreen extends Screen {
     private final EnumMap<PeContent,ClickableWidget> buttons=new EnumMap<>(PeContent.class);
     private Optional<Boolean> portals;
 
-    PeContentScreen(Screen parent, boolean finite, PeContentSettings initial, Consumer<PeContentSettings> apply) {
+    PeContentScreen(Screen parent, PeContentSettings initial, Consumer<PeContentSettings> apply) {
         super(PeCustomizeScreen.label("content"));
         this.parent = parent;
-        this.finite = finite;
         this.apply = apply;
         water.addAll(initial.water());
         flags.addAll(initial.flags());
@@ -58,11 +56,6 @@ final class PeContentScreen extends Screen {
         updateDependencies();
         for (String group : List.of("pillage","buzzy","nether_group")) section(body,group,w);
         refreshFeatures();
-        body.add(CyclingButtonWidget.builder((Integer mode) -> PeCustomizeScreen.label(
-            mode == 0 ? finite ? "default_off" : "default_on" : mode == 1 ? "on" : "off"),
-            portals.map(v -> v ? 1 : 2).orElse(0)).values(0,1,2)
-            .build(0,0,w,20,PeCustomizeScreen.label("portals"),
-                (b,mode) -> portals = mode == 0 ? Optional.empty() : Optional.of(mode == 1)));
         var scroll = new ScrollableLayoutWidget(client, body, height - 68);
         scroll.setHeight(height - 68);
         scroll.refreshPositions();

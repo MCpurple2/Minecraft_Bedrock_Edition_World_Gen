@@ -14,8 +14,10 @@ abstract class PeFeatureRegionMixin {
     @Inject(method="setBlockState",at=@At("HEAD"),cancellable=true)
     private void peWorldgen$clipFeatures(BlockPos pos, BlockState state, int flags, int depth, CallbackInfoReturnable<Boolean> result) {
         var region=(ChunkRegion)(Object)this;
-        if(region.toServerWorld().getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe &&
-            (pos.getY()<0 || pos.getY()>=128 || pe.isOld() && !pe.finiteBorder().containsPoint(pos.getX(),pos.getZ(),0)))
+        var world = region.toServerWorld();
+        var bounds = net.mcpe.worldgen.fabric.PeOldWorldBorder.bounds(world);
+        if ((world.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator && (pos.getY()<0 || pos.getY()>=128))
+                || bounds != null && !bounds.containsPoint(pos.getX(), pos.getZ(), 0))
             result.setReturnValue(false);
     }
 }

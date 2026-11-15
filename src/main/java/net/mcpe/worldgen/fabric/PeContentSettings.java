@@ -70,7 +70,6 @@ public record PeContentSettings(Set<Aquatic> water, boolean villages, boolean be
         FEATURE_CODEC.listOf().optionalFieldOf("features").forGetter(s -> s.selection.map(v -> v.stream().sorted().toList()))
     ).apply(i, (legacy, items, villages, bees, nether, portals, features) -> new PeContentSettings(
         Set.copyOf(items.orElse(legacy ? LEGACY : List.of())), villages, bees, nether, portals,features.map(Set::copyOf))));
-    public boolean allowPortals(boolean finite) { return portalOverride.orElse(!finite); }
     public boolean overworldContent() { return !water.isEmpty() || villages || has(PeContent.BAMBOO) || has(PeContent.FOSSILS)
             || has(PeContent.OUTPOSTS) || has(PeContent.MANSIONS) || has(PeContent.OVERWORLD_PORTALS); }
 }

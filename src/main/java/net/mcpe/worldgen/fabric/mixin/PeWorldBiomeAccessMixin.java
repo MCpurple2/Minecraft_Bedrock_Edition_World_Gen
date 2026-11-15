@@ -25,7 +25,7 @@ abstract class PeWorldBiomeAccessMixin {
     private void peWorldgen$installBiomeAccess(MutableWorldProperties properties, RegistryKey<World> dimension,
             DynamicRegistryManager registries, RegistryEntry<DimensionType> type, boolean client, boolean debug,
             long biomeSeed, int maxChainDepth, CallbackInfo ci) {
-        if (World.OVERWORLD.equals(dimension)) {
+        if (World.OVERWORLD.equals(dimension) || World.NETHER.equals(dimension)) {
             biomeAccess = new PeBorderBiomeAccess((World)(Object)this, biomeSeed);
         }
     }

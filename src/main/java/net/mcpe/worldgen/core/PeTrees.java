@@ -107,7 +107,7 @@ public final class PeTrees {
                 boolean corner=Math.abs(xx-x)==radius&&Math.abs(zz-z)==radius;
                 if (corner && ((r.nextRawInt() & 1)==0 || dy==0)) continue;
                 int block = w.getBlock(xx,yy,zz);
-                if (w.release()==PeRelease.V0_11_1 ? canopyCanReplace011(block) : leafFree(block)) {
+                if (w.release().compareTo(PeRelease.V0_12_3) < 0 ? canopyCanReplace011(block) : leafFree(block)) {
                     w.setBlock(xx,yy,zz,18,data);
                 }
             }

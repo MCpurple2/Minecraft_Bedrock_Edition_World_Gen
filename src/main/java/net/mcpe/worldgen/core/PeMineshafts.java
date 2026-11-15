@@ -43,7 +43,10 @@ public final class PeMineshafts {
         if(r.nextFloat()>=0.004f || r.nextInt(80)>=Math.max(Math.abs(x),Math.abs(z))) return List.of();
         int id=w.biomeAt(x*16,z*16);
         boolean mesa=(id>=37&&id<=39)||(id>=165&&id<=167);
-        if(mesa && !badlands) return List.of();
+        if (mesa && !badlands) {
+            if (w.release() != PeRelease.V0_9_5) return List.of();
+            mesa = false;
+        }
         List<Piece> pieces=new Layout().generate(r,x,z,mesa);
         String state=w.loadVillageState(stateKey(x,z));
         if(state!=null) {

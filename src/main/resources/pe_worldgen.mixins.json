@@ -2,7 +2,18 @@
   "required": true,
   "package": "net.mcpe.worldgen.fabric.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin", "PeWorldBiomeAccessMixin", "PePortalMixin", "PeFeatureRegionMixin", "MonumentRoomsAccessor", "MonumentRoomShuffleMixin", "NetherCanyonMixin"],
-  "injectors": { "defaultRequire": 1 }
+  "mixins": [
+    "MinecraftServerMixin",
+    "PrepareSpawnTaskMixin",
+    "PeWorldBiomeAccessMixin",
+    "PePortalMixin",
+    "PeFeatureRegionMixin",
+    "MonumentRoomsAccessor",
+    "MonumentRoomShuffleMixin",
+    "NetherCanyonMixin",
+    "PeNetherBoundsMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }
-

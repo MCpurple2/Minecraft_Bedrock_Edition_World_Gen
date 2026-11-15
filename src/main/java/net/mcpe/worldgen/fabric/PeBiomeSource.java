@@ -74,7 +74,7 @@ public final class PeBiomeSource extends BiomeSource {
     @Override protected MapCodec<? extends BiomeSource> getCodec() { return CODEC; }
     @Override protected Stream<RegistryEntry<Biome>> biomeStream() {
         Stream<RegistryEntry<Biome>> inside = Stream.concat(palette.values().stream(), extra.values().stream()).distinct();
-        return old ? Stream.concat(inside, Stream.of(voidBiome)) : inside;
+        return Stream.concat(inside, Stream.of(voidBiome));
     }
     @Override public synchronized RegistryEntry<Biome> getBiome(int x, int y, int z, MultiNoiseUtil.MultiNoiseSampler noise) {
         PeWorldGenerator generator = core;

@@ -47,9 +47,10 @@ public enum PeContent {
 
     public static Set<PeContent> defaults(PeRelease release, boolean finite) {
         var flags = EnumSet.of(VILLAGES, DESERT_VILLAGES, DESERT_WELLS);
+        if (release.compareTo(PeRelease.V0_12_3)>=0) flags.addAll(Set.of(FORTRESS, QUARTZ));
         if (!finite) {
-            flags.addAll(Set.of(STRONGHOLDS, MINESHAFTS, BADLANDS_MINES, DUNGEONS));
-            if (release.compareTo(PeRelease.V0_12_3)>=0) flags.addAll(Set.of(FORTRESS, QUARTZ));
+            flags.addAll(Set.of(STRONGHOLDS, MINESHAFTS, DUNGEONS));
+            if (release.compareTo(PeRelease.V0_10_2)>=0) flags.add(BADLANDS_MINES);
             if (release.compareTo(PeRelease.V0_13_2)>=0) flags.add(DESERT_PYRAMIDS);
             if (release.compareTo(PeRelease.V0_14_3)>=0) flags.add(HUTS);
             if (release.compareTo(PeRelease.V0_15_10)>=0) flags.add(JUNGLE_PYRAMIDS);

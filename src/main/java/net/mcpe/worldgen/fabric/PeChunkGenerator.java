@@ -51,9 +51,14 @@ public final class PeChunkGenerator extends ChunkGenerator {
         Codec.BOOL.optionalFieldOf("pe_spawn", false).forGetter(PeChunkGenerator::usesPeSpawn),
         Codec.BOOL.optionalFieldOf("native_biome_seeds", false).forGetter(generator -> generator.nativeBiomeSeeds),
         RELEASE_CODEC.optionalFieldOf("pe_version", PeRelease.V0_11_1).forGetter(PeChunkGenerator::release),
-        PeContentSettings.CODEC.optionalFieldOf("java_content", PeContentSettings.DEFAULT).forGetter(PeChunkGenerator::settings)
-    ).apply(instance, PeChunkGenerator::new));
+        PeContentSettings.CODEC.optionalFieldOf("java_content", PeContentSettings.DEFAULT).forGetter(PeChunkGenerator::settings),
+        PeBedrockSettings.CODEC.optionalFieldOf("bedrock_features").forGetter(g -> java.util.Optional.of(g.bedrock))
+    ).apply(instance, (biome,old,spawn,nativeSeeds,release,settings,bedrock) ->
+        new PeChunkGenerator(biome,old,spawn,nativeSeeds,release,settings,
+            bedrock.orElseGet(() -> PeBedrockSettings.defaults(old,settings.portalOverride())))));
     private final PeContentSettings settings;
+    private final PeBedrockSettings bedrock;
+    public PeBedrockSettings bedrock() { return bedrock; }
     private final PeRelease release;
     private final boolean old;
     private final boolean peSpawn;
@@ -78,10 +83,16 @@ public final class PeChunkGenerator extends ChunkGenerator {
     }
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds, PeRelease release, PeContentSettings settings) {
+        this(biomeSource, old, peSpawn, nativeBiomeSeeds, release, settings, PeBedrockSettings.defaults(old, settings.portalOverride()));
+    }
+
+    public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds,
+            PeRelease release, PeContentSettings settings, PeBedrockSettings bedrock) {
         super(biomeSource, biome -> PeJavaContent.features(biome, settings.resolve(release,old)));
+        this.bedrock = bedrock;
         this.settings = settings.resolve(release,old);
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.configure(this.settings);
-        if (!release.supports(old)) throw new IllegalArgumentException("Unsupported finite PE release: " + release.id());
+        if (!release.supports(old)) throw new IllegalArgumentException("Unsupported PE world type for release: " + release.id());
         this.release = release;
         this.old = old;
         this.peSpawn = peSpawn;
@@ -95,6 +106,9 @@ public final class PeChunkGenerator extends ChunkGenerator {
 
     public BlockPos initialSpawnAnchor() {
         var spawn = engine().initialSpawn();
+        var bounds = finiteBorder();
+        if (bounds != null && !bounds.containsPoint(spawn.x(), spawn.z(), 0))
+            return new BlockPos(bounds.centerX(), spawn.y(), bounds.centerZ());
         return new BlockPos(spawn.x(), spawn.y(), spawn.z());
     }
 
@@ -119,6 +133,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
         engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds, release);
+        bedrock.configure(engine, peSpawn);
         population = new PePopulation(seed,old,engine,settings.villages(),settings.flags());
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine, seed);
         chunks.clear();

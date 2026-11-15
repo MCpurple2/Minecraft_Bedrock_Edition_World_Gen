@@ -14,9 +14,12 @@ public final class PeWorldgenMod implements ModInitializer {
     public void onInitialize() {
         PayloadTypeRegistry.playS2C().register(PeFiniteBounds.ID, PeFiniteBounds.CODEC);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            var world = server.getOverworld();
-            PeOldWorldBorder.install(world);
-            if (world.getBiomeAccess() instanceof PeBorderBiomeAccess access) access.setBounds(PeFiniteBounds.from(world));
+            var packet = PeFiniteBounds.from(server.getOverworld());
+            for (var world : server.getWorlds()) {
+                PeOldWorldBorder.install(world);
+                if (world.getBiomeAccess() instanceof PeBorderBiomeAccess access)
+                    access.setBounds(PeOldWorldBorder.bounds(world) == null ? null : packet);
+            }
         });
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             var bounds = PeFiniteBounds.from(server.getOverworld());

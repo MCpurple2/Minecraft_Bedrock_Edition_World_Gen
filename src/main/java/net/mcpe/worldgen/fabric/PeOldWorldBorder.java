@@ -8,20 +8,29 @@ import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.border.WorldBorder;
 
 /** Initialize each old world's saved vanilla border once. Subsequent /worldborder edits persist. */
-final class PeOldWorldBorder extends PersistentState {
+public final class PeOldWorldBorder extends PersistentState {
     private static final PersistentStateType<PeOldWorldBorder> TYPE = new PersistentStateType<>(
         "pe_worldgen_old_border", PeOldWorldBorder::new, MapCodec.unit(PeOldWorldBorder::new).codec(), DataFixTypes.LEVEL);
 
+    public static net.mcpe.worldgen.core.PeWorldBorderLocation bounds(ServerWorld world) {
+        var dimension = world.getRegistryKey();
+        boolean nether = dimension.equals(net.minecraft.world.World.NETHER);
+        if (!nether && !dimension.equals(net.minecraft.world.World.OVERWORLD)) return null;
+        var overworld = nether ? world.getServer().getOverworld() : world;
+        if (overworld == null || !(overworld.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe)) return null;
+        if (nether && !(pe.isOld() && pe.bedrock().syncNether())) return null;
+        return pe.finiteBorder();
+    }
+
     static void install(ServerWorld world) {
-        if (!(world.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator generator)
-                || !generator.isOld()) return;
+        var location = bounds(world);
+        if (location == null) return;
         var states = world.getPersistentStateManager();
         if (states.get(TYPE) != null) return;
 
-        var location = generator.finiteBorder();
         WorldBorder border = world.getWorldBorder();
         border.setCenter(location.centerX(), location.centerZ());
-        border.setSize(net.mcpe.worldgen.core.PeWorldBorderLocation.WIDTH);
+        border.setSize(location.width());
         states.getOrCreate(TYPE).markDirty();
     }
 }

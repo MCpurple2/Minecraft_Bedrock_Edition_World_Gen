@@ -23,7 +23,8 @@ public final class PeWorldgenClient implements ClientModInitializer {
     }
 
     private void apply(ClientWorld world) {
-        if (world != null && world.getRegistryKey().equals(World.OVERWORLD)
-            && world.getBiomeAccess() instanceof PeBorderBiomeAccess access) access.setBounds(bounds);
+        if (world != null && world.getBiomeAccess() instanceof PeBorderBiomeAccess access)
+            access.setBounds(world.getRegistryKey().equals(World.OVERWORLD) || bounds != null && bounds.syncNether()
+                && world.getRegistryKey().equals(World.NETHER) ? bounds : null);
     }
 }

@@ -61,12 +61,12 @@ final class PeSpecialSurfaces {
         float cap=Math.abs(pillarCap.value(x/512f,z/512f));
         return (int)(64+Math.min(value*value*2.5f,14+Math.ceil(cap*50)));
     }
-    void mesaColumn(byte[] blocks,byte[] meta,int column,int x,int z,int biome,float noise,PeRandom random) {
-        int bedrock=2+random.nextInt(4);
+    void mesaColumn(byte[] blocks,byte[] meta,int column,int x,int z,int biome,float noise,PeRandom random,boolean early) {
+        int bedrock=early ? 0 : 2+random.nextInt(4);
         Arrays.fill(blocks,column,column+bedrock,(byte)7);
         int pillar=biome==165 ? pillarHeight(x,z,noise) : 0;
         int thickness=(int)(noise*(1f/3)+3f+random.nextFloat()*.25f);
-        boolean smooth=Math.cos(noise*(1f/3)*(float)Math.PI)>0;
+        boolean smooth=Math.cos(noise*(1f/3)*(float)Math.PI)>(early ? .5 : 0);
         boolean plateau=biome==38 || biome==166;
         int offset=(int)Math.rint(2f*bandOffset.value(x/512f,z/512f));
         int depth=-1,touched=0;
@@ -75,7 +75,8 @@ final class PeSpecialSurfaces {
         for(int y=127;y>=bedrock;y--) {
             int i=column+y,id=Byte.toUnsignedInt(blocks[i]);
             if((id==0 || id==9) && y<pillar) {blocks[i]=1;id=1;}
-            if(touched>=15) continue;
+            if (early && y <= random.nextInt(5)) { blocks[i]=7; continue; }
+            if(!early && touched>=15) continue;
             if(id==0) {depth=-1;continue;}
             if(id!=1) continue;
             if(depth<0) {

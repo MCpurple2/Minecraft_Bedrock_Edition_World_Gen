@@ -1,7 +1,7 @@
 {
-  "generator.pe_worldgen.mcpe_alpha": "Pocket Edition Alpha",
-  "generator.pe_worldgen.pe_0111_infinite": "Pocket Edition Alpha",
-  "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha",
+  "generator.pe_worldgen.mcpe_alpha": "Bedrock Edition",
+  "generator.pe_worldgen.pe_0111_infinite": "Pocket Edition Alpha 0.11.1",
+  "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha 0.11.1 Finite",
   "pe_worldgen.customize.title": "Bedrock Edition World Generator @displayBuild@ 世界自定义",
   "pe_worldgen.customize.preset": "World Preset：%s",
   "pe_worldgen.customize.presets": "Bedrock Edition World Generator @displayBuild@ 世界预设",
@@ -97,5 +97,15 @@
   "pe_worldgen.customize.classic": "早期 Java 版内容",
   "pe_worldgen.customize.feature_dungeons": "生成地牢",
   "pe_worldgen.customize.feature_desert_wells": "生成沙漠水井",
-  "pe_worldgen.customize.adventure_part1": "Beta 1.8.x 冒险更新（第一部分）"
+  "pe_worldgen.customize.adventure_part1": "Beta 1.8.x 冒险更新（第一部分）",
+  "generator.pe_worldgen.pe_095_old": "Pocket Edition Alpha 0.9.5 Finite",
+  "generator.pe_worldgen.pe_095_infinite": "Pocket Edition Alpha 0.9.5",
+  "generator.pe_worldgen.pe_0102_old": "Pocket Edition Alpha 0.10.2 Finite",
+  "generator.pe_worldgen.pe_0102_infinite": "Pocket Edition Alpha 0.10.2",
+  "generator.pe_worldgen.pe_0123_old": "Pocket Edition Alpha 0.12.3 Finite",
+  "generator.pe_worldgen.pe_0132_old": "Pocket Edition Alpha 0.13.2 Finite",
+  "generator.pe_worldgen.pe_0143_old": "Pocket Edition Alpha 0.14.3 Finite",
+  "generator.pe_worldgen.pe_01510_old": "Pocket Edition Alpha 0.15.10 Finite",
+  "generator.pe_worldgen.pe_0162_old": "Pocket Edition Alpha 0.16.2 Finite",
+  "generator.pe_worldgen.pe_0165_old": "Pocket Edition Alpha 0.16.5 Finite"
 }

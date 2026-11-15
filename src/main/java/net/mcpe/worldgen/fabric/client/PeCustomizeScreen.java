@@ -1,5 +1,6 @@
 package net.mcpe.worldgen.fabric.client;
 
+import net.mcpe.worldgen.fabric.PeBedrockSettings;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import net.mcpe.worldgen.core.PeRelease;
@@ -37,12 +38,13 @@ public final class PeCustomizeScreen extends Screen {
         "Xbox One Edition", "PlayStation 3 Edition", "PlayStation 4 Edition", "PlayStation Vita Edition",
         "Wii U Edition", "Nintendo Switch Edition"};
     private static final String[] DESCRIPTIONS = {
-        "World generation from Pocket Edition Alpha 0.1.3 to Alpha 0.8.1. Also includes world generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.2 using the Old world type.",
-        "World generation from Pocket Edition Alpha 0.9.5 and Alpha 0.16.2."
+        "World generation from Pocket Edition Alpha 0.1.3 to Alpha 0.8.1. Also includes world generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.5 using the Old world type.",
+        "World generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.2."
     };
     private final CreateWorldScreen parent;
     private boolean old;
     private PeContentSettings settings = PeContentSettings.DEFAULT.resolve(PeRelease.V0_11_1,false);
+    private PeBedrockSettings bedrock = PeBedrockSettings.defaults(false, java.util.Optional.empty());
     private PeRelease release = PeRelease.V0_11_1;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
@@ -52,6 +54,7 @@ public final class PeCustomizeScreen extends Screen {
             old = generator.isOld();
             release = generator.release();
             settings = generator.settings();
+            bedrock = generator.bedrock();
         }
     }
 
@@ -76,12 +79,16 @@ public final class PeCustomizeScreen extends Screen {
         var choices = new ArrayList<PePresetScreen.Choice>();
         for (PeRelease candidate : PeRelease.values()) {
             if (candidate.supports(finite)) {
-                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal("Explore Minecraft Pocket Edition (Alpha) " + candidate.id() + "'s " + (candidate.hasWorldTypes() ? kind + " " : "") + "World"),
-                    () -> importPreset(finite, candidate), Identifier.of("pe_worldgen",
-                        "textures/gui/presets/"+candidate.presetPath(finite)+".png")));
+                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal("Explore Minecraft Pocket Edition Alpha " + candidate.id() + "'s " + (finite && candidate.hasWorldTypes() ? "Finite " : "") + "World"),
+                    () -> importPreset(finite, candidate), presetIcon(candidate,finite)));
             }
         }
         client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), choices));
+    }
+
+    private Identifier presetIcon(PeRelease release, boolean finite) {
+        var icon = Identifier.of("pe_worldgen", "textures/gui/presets/" + release.presetPath(finite) + ".png");
+        return client.getResourceManager().getResource(icon).isPresent() ? icon : null;
     }
 
     private ButtonWidget button(Text text, int x, int y, int w, Runnable action) {
@@ -98,12 +105,19 @@ public final class PeCustomizeScreen extends Screen {
         int presetWidth = Math.min(width - 16, Math.max(200, textRenderer.getWidth(presetLabel()) + 18));
         button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
         for (int i = 0; i < 3; i++) {
-            var setting = button(Text.literal(i == 0 ? "Settings" : "WIP"), mid - half + 102, y + 24 + i * 24,
-                Math.max(65, half * 2 - 140), () -> client.setScreen(new PeContentScreen(this, old, settings, value -> settings = value)));
-            setting.active = i == 0;
-            var advanced = button(Text.literal(i == 0 ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
-                () -> client.setScreen(new PeContentJsonScreen(this, settings, value -> settings = value)));
-            advanced.active = i == 0;
+            boolean exclusive = i == 2;
+            boolean enabled = i != 1;
+            int left = mid - half;
+            int start = left + Math.min(174, half * 2 - 70);
+            var setting = button(Text.literal(enabled ? "Settings" : "WIP"), start, y + 24 + i * 24,
+                mid + half - start - 25, () -> client.setScreen(exclusive
+                    ? new PeBedrockScreen(this, old, bedrock, value -> bedrock = value)
+                    : new PeContentScreen(this, settings, value -> settings = value)));
+            setting.active = enabled;
+            var advanced = button(Text.literal(enabled ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
+                () -> client.setScreen(exclusive ? PeBedrockScreen.editor(this, bedrock, value -> bedrock = value)
+                    : new PeContentJsonScreen(this, settings, value -> settings = value)));
+            advanced.active = enabled;
             if (advanced.active) advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         }
         int actions = y + 100;
@@ -112,31 +126,33 @@ public final class PeCustomizeScreen extends Screen {
                 old = false;
                 release = PeRelease.V0_11_1;
                 settings = PeContentSettings.DEFAULT.resolve(release,old);
+                bedrock = PeBedrockSettings.defaults(old,java.util.Optional.empty());
             }
             client.setScreen(this);
         }, label("reset"), label("reset_prompt"), label("reset"), ScreenTexts.CANCEL)));
         button(label("preview"), mid + 5, actions, half, () -> {
             long seed = GeneratorOptions.parseSeed(parent.getWorldCreator().getSeed())
                 .orElse(parent.getWorldCreator().getGeneratorOptionsHolder().generatorOptions().getSeed());
-            client.setScreen(new PeBiomePreviewScreen(this, seed, old, release, settings));
+            client.setScreen(new PeBiomePreviewScreen(this, seed, old, release, settings, bedrock));
         });
         button(label("quick"), mid - half - 5, actions + 24, half,
-            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, false)));
+            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, bedrock, false)));
         button(label("export_pack"), mid + 5, actions + 24, half,
-            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, true)));
+            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, bedrock, true)));
         button(ScreenTexts.DONE, mid - half - 5, height - 27, half, this::apply);
         button(ScreenTexts.CANCEL, mid + 5, height - 27, half, this::close);
     }
 
     private Text presetLabel() {
-        return label("preset", Text.literal(release.id()).formatted(Formatting.YELLOW));
+        return label("preset", Text.literal("Pocket Edition Alpha " + release.id() + (old && release.hasWorldTypes() ? " Finite" : "")).formatted(Formatting.YELLOW));
     }
 
-    void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported) {
+    void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported, PeBedrockSettings importedBedrock) {
         if (!selectedRelease.supports(selectedOld)) throw new IllegalArgumentException("Unsupported finite preset");
         release = selectedRelease;
         old = selectedOld;
         settings = imported.resolve(release,old);
+        bedrock = importedBedrock;
         client.setScreen(this);
     }
     void importPreset(boolean selectedOld, PeRelease selectedRelease) {
@@ -144,6 +160,7 @@ public final class PeCustomizeScreen extends Screen {
         release = selectedRelease;
         old = selectedOld;
         settings = PeContentSettings.DEFAULT.resolve(release,old);
+        bedrock = PeBedrockSettings.defaults(old,java.util.Optional.empty());
         client.setScreen(this);
     }
 
@@ -151,8 +168,9 @@ public final class PeCustomizeScreen extends Screen {
         boolean selectedOld = old;
         PeRelease selectedRelease = release;
         PeContentSettings selectedSettings = settings;
+        PeBedrockSettings selectedBedrock = bedrock;
         parent.getWorldCreator().applyModifier((registries, dimensions) -> {
-            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true, selectedRelease, selectedSettings);
+            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true, selectedRelease, selectedSettings, selectedBedrock);
             var updated = new LinkedHashMap<>(dimensions.dimensions());
             var overworld = registries.getOrThrow(RegistryKeys.DIMENSION_TYPE).getOrThrow(DimensionTypes.OVERWORLD);
             updated.put(DimensionOptions.OVERWORLD, new DimensionOptions(overworld, generator));
@@ -180,8 +198,8 @@ public final class PeCustomizeScreen extends Screen {
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 16, 0xffffffff);
-        int right = width / 2 - half() + 95;
-        String[] labels = {"Java Edition Contents Provider", "WIP", "WIP"};
+        int right = width / 2 - half() + Math.min(174, half() * 2 - 70) - 5;
+        String[] labels = {"Java Edition Contents Provider", "WIP", "Bedrock Exclusive Features Provider"};
         for (int i = 0; i < labels.length; i++) {
             context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
                 top() + 30 + i * 24, 0xffffffff);

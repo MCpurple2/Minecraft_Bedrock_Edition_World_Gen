@@ -1,7 +1,7 @@
 {
-  "generator.pe_worldgen.mcpe_alpha": "Pocket Edition Alpha",
-  "generator.pe_worldgen.pe_0111_infinite": "Pocket Edition Alpha",
-  "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha",
+  "generator.pe_worldgen.mcpe_alpha": "Bedrock Edition",
+  "generator.pe_worldgen.pe_0111_infinite": "Pocket Edition Alpha 0.11.1",
+  "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha 0.11.1 Finite",
   "pe_worldgen.customize.title": "Bedrock Edition World Generator @displayBuild@ Customization",
   "pe_worldgen.customize.preset": "World Preset: %s",
   "pe_worldgen.customize.presets": "Bedrock Edition World Generator @displayBuild@ World Presets",
@@ -97,5 +97,15 @@
   "pe_worldgen.customize.classic": "Early Java Edition Contents",
   "pe_worldgen.customize.feature_dungeons": "Generate Dungeons",
   "pe_worldgen.customize.feature_desert_wells": "Generate Desert Wells",
-  "pe_worldgen.customize.adventure_part1": "Beta 1.8.x Adventure Update Part I Contents"
+  "pe_worldgen.customize.adventure_part1": "Beta 1.8.x Adventure Update Part I Contents",
+  "generator.pe_worldgen.pe_095_old": "Pocket Edition Alpha 0.9.5 Finite",
+  "generator.pe_worldgen.pe_095_infinite": "Pocket Edition Alpha 0.9.5",
+  "generator.pe_worldgen.pe_0102_old": "Pocket Edition Alpha 0.10.2 Finite",
+  "generator.pe_worldgen.pe_0102_infinite": "Pocket Edition Alpha 0.10.2",
+  "generator.pe_worldgen.pe_0123_old": "Pocket Edition Alpha 0.12.3 Finite",
+  "generator.pe_worldgen.pe_0132_old": "Pocket Edition Alpha 0.13.2 Finite",
+  "generator.pe_worldgen.pe_0143_old": "Pocket Edition Alpha 0.14.3 Finite",
+  "generator.pe_worldgen.pe_01510_old": "Pocket Edition Alpha 0.15.10 Finite",
+  "generator.pe_worldgen.pe_0162_old": "Pocket Edition Alpha 0.16.2 Finite",
+  "generator.pe_worldgen.pe_0165_old": "Pocket Edition Alpha 0.16.5 Finite"
 }
