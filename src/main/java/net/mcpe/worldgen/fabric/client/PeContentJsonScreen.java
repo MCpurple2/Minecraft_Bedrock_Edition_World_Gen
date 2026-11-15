@@ -35,37 +35,87 @@ final class PeContentJsonScreen extends Screen {
         settingsString = format(settings);
     }
 
+    // Iteration order is the order shown in the editor, from earliest to latest release.
+    private enum Update {
+        EARLY("classic","early_java_features"),
+        ADVENTURE_I("adventure_part1","adventure_update_part_i_features"),
+        ADVENTURE_II("adventure","adventure_update_part_ii_features"),
+        SCARY("scary","scary_update_features"),
+        REDSTONE("redstone","redstone_update_features"),
+        BOUNTIFUL("bountiful","bountiful_update_features"),
+        FROSTBURN("frostburn","frostburn_update_features"),
+        EXPLORATION("exploration","exploration_update_features"),
+        AQUATIC("aquatic_group","aquatic_update_features"),
+        PILLAGE("pillage","village_and_pillage_update_features"),
+        BEES("buzzy","buzzy_bees_update_features"),
+        NETHER("nether_group","nether_update_features");
+
+        final String group, key;
+        Update(String group,String key) { this.group=group; this.key=key; }
+    }
+
+    private static String editorKey(PeContent feature) {
+        return feature == PeContent.VILLAGES ? "legacy_villages" : feature.key();
+    }
+
     static String format(PeContentSettings settings) {
         var json = new JsonObject();
-        var flags = new JsonObject();
-        for (var item : Aquatic.values()) flags.addProperty(item.asString(), settings.water().contains(item));
-        json.add("aquatic_features", flags);
-        var features=new JsonObject();
-        for (var f : PeContent.values()) features.addProperty(f.key(),settings.flags().contains(f));
-        json.add("features",features);
+        for (var update : Update.values()) {
+            var fields = new JsonObject();
+            if (update == Update.AQUATIC) {
+                for (var item : Aquatic.values()) fields.addProperty(item.asString(),settings.water().contains(item));
+            } else {
+                for (var feature : PeContent.values()) if (feature.group.equals(update.group))
+                    fields.addProperty(editorKey(feature),settings.flags().contains(feature));
+            }
+            json.add(update.key,fields);
+        }
         json.add("allow_nether_portals",settings.portalOverride().map(JsonPrimitive::new)
             .<JsonElement>map(v -> v).orElse(JsonNull.INSTANCE));
         return GSON.toJson(json);
     }
+
     private static boolean flag(JsonObject object,String key) {
         var field = object.get(key);
         if (!(field instanceof JsonPrimitive p) || !p.isBoolean()) throw new JsonParseException(key);
         return p.getAsBoolean();
     }
+
+    private static JsonObject group(JsonObject root,String key) {
+        if (root.get(key) instanceof JsonObject object) return object;
+        throw new JsonParseException(key);
+    }
+
     static PeContentSettings parse(String text) {
         var json = GSON.fromJson(text, JsonObject.class);
-        if (json == null || json.size()!=3 || !json.has("allow_nether_portals") ||
-            !(json.get("aquatic_features") instanceof JsonObject flags) || flags.size()!=Aquatic.values().length)
-            throw new JsonParseException("Invalid settings fields");
-        var selected = EnumSet.noneOf(Aquatic.class);
-        for (var item : Aquatic.values()) if (flag(flags,item.asString())) selected.add(item);
+        if (json == null || !json.has("allow_nether_portals")) throw new JsonParseException("Invalid settings");
+        boolean legacy = json.has("features");
+        if (json.size() != (legacy ? 3 : Update.values().length + 1)) throw new JsonParseException("Invalid groups");
+        var water = EnumSet.noneOf(Aquatic.class);
+        var aquatic = group(json,legacy ? "aquatic_features" : Update.AQUATIC.key);
+        if (aquatic.size()!=Aquatic.values().length) throw new JsonParseException("Invalid aquatic settings");
+        for (var item : Aquatic.values()) if (flag(aquatic,item.asString())) water.add(item);
+
+        var enabled=EnumSet.noneOf(PeContent.class);
+        if (legacy) {
+            var fields=group(json,"features");
+            if (fields.size()!=PeContent.values().length) throw new JsonParseException("Invalid feature list");
+            for (var f : PeContent.values()) if (flag(fields,f.key())) enabled.add(f);
+        } else {
+            for (var update : Update.values()) {
+                if (update == Update.AQUATIC) continue;
+                var fields=group(json,update.key);
+                int expected=0;
+                for (var f : PeContent.values()) if (f.group.equals(update.group)) {
+                    expected++;
+                    if (flag(fields,editorKey(f))) enabled.add(f);
+                }
+                if (fields.size()!=expected) throw new JsonParseException(update.key);
+            }
+        }
         Optional<Boolean> portals = json.get("allow_nether_portals").isJsonNull() ? Optional.empty()
             : Optional.of(flag(json,"allow_nether_portals"));
-        if (!(json.get("features") instanceof JsonObject features) || features.size()!=PeContent.values().length)
-            throw new JsonParseException("Invalid feature list");
-        var enabled=EnumSet.noneOf(PeContent.class);
-        for (var f : PeContent.values()) if (flag(features,f.key())) enabled.add(f);
-        return PeContentSettings.configured(selected,enabled,portals);
+        return PeContentSettings.configured(water,enabled,portals);
     }
 
     @Override protected void init() {

@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 3.3 IWBUMS
+Pocket Edition World Generator · Build 3.4 IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.4 将铅笔编辑器的配置按更新版本排列，旧式村庄键为 legacy_villages。可粘贴 Build 3.3 的编辑器 JSON。
 
 新生成的旧式村庄铁匠铺保留槽内两个岩浆源，建造期间不立即推进岩浆扩散。
 Build 3.3 的 Java Edition Contents Provider 按 Java 更新分组。选择版本会载入该 PE 版本和世界类型的默认设置。Beta 1.8.x 分组提供旧式村庄、废弃矿井和要塞开关。旧式村庄开关控制沙漠、热带草原、针叶林和僵尸村庄四个子项。新版村庄使用独立的 1.14.x 开关。手动修改随世界、快速导出及数据包保存。
