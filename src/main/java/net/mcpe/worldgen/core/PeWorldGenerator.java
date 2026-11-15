@@ -64,13 +64,21 @@ public final class PeWorldGenerator {
         return initialSpawn;
     }
 
-    public boolean isInsideChunk(int chunkX, int chunkZ) {
-        if (!old) return true;
-        int centerX = useSpawnBounds ? initialSpawn().x() >> 4 : 0;
-        int centerZ = useSpawnBounds ? initialSpawn().z() >> 4 : 0;
-        return chunkX >= centerX - 8 && chunkX <= centerX + 7
-            && chunkZ >= centerZ - 8 && chunkZ <= centerZ + 7;
+    private PeWorldBorderLocation border;
+
+    public synchronized PeWorldBorderLocation finiteBorder() {
+        if (!old) return null;
+        if (border == null) {
+            Spawn anchor = useSpawnBounds ? initialSpawn() : new Spawn(0, 0, 0);
+            border = new PeWorldBorderLocation(anchor.x() & ~15, anchor.z() & ~15);
+        }
+        return border;
     }
+
+    public boolean isInsideChunk(int chunkX, int chunkZ) {
+        return !old || finiteBorder().containsChunk(chunkX, chunkZ);
+    }
+
     public int[] biomeArea(int x, int z, int width, int height) {
         return biomes.zoomedArea(x, z, width, height);
     }

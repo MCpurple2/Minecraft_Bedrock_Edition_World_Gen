@@ -84,6 +84,8 @@ public final class PeChunkGenerator extends ChunkGenerator {
         return new Vec3d(x + 0.5, y, z + 0.5);
     }
 
+    public net.mcpe.worldgen.core.PeWorldBorderLocation finiteBorder() { return engine().finiteBorder(); }
+
     public boolean isOld() { return old; }
 
     @Override

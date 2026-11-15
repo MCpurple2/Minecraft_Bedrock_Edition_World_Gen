@@ -4,7 +4,7 @@
   "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha",
   "pe_worldgen.customize.title": "Pocket Edition World Generator Customization",
   "pe_worldgen.customize.preset": "World Preset: %s",
-  "pe_worldgen.customize.presets": "World Preset",
+  "pe_worldgen.customize.presets": "Pocket Edition World Generator World Presets",
   "pe_worldgen.customize.reset": "Reset settings",
   "pe_worldgen.customize.reset_prompt": "Reset the world preset to Pocket Edition Alpha (infinite), version 0.11.1?",
   "pe_worldgen.customize.preview": "Preview biomes",

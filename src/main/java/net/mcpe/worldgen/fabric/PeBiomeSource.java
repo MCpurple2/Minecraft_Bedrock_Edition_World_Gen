@@ -69,7 +69,9 @@ public final class PeBiomeSource extends BiomeSource {
         PeWorldGenerator generator = core;
         if (generator == null) return palette.get(1);
         int chunkX = x >> 2, chunkZ = z >> 2;
-        if (!generator.isInsideChunk(chunkX, chunkZ)) return voidBiome;
+        // Moderner Beta PRE rule: apply the out-of-bounds predicate before resolving any PE biome.
+        var border = generator.finiteBorder();
+        if (border != null && border.outsideBiomeCell(x, z)) return voidBiome;
         long key = ((long)chunkX << 32) | (chunkZ & 0xffffffffL);
         int[] area = areas.computeIfAbsent(key, ignored -> generator.biomeArea(chunkX << 4, chunkZ << 4, 16, 16));
         int id = area[(x & 3) * 4 + (z & 3) * 64];

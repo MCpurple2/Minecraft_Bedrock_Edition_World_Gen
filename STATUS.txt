@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 2.4 IWBUMS
+Pocket Edition World Generator · Build 2.5 IWBUMS
 Minecraft Java 1.21.11 · Fabric · PE Alpha 0.11.1 主世界
+
+Build 2.5 的两级预设列表采用 Moderner Beta 的图文条目，运行时读取 Programmer Art 图标。有限地图按 MB 的边界谓词注入虚空群系，按 PE 地图锚点定位，边缘余量为 0。兼容 C2ME 的群系采样优化。
 
 Build 2.4 的主世界可在 Y=-64 至 319 建造。PE 地形维持 Y=0 至 127；两侧在生成时为空气。自定义界面增加分类预设、生物群系预览、快速导入导出和数据包导出。
 

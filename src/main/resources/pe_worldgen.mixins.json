@@ -2,7 +2,7 @@
   "required": true,
   "package": "net.mcpe.worldgen.fabric.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin", "PeBorderBiomeMixin"],
+  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin", "PeWorldBiomeAccessMixin"],
   "injectors": { "defaultRequire": 1 }
 }
 

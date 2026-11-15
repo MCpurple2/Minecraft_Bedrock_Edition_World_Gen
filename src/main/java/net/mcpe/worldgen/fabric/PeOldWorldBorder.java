@@ -3,7 +3,6 @@ package net.mcpe.worldgen.fabric;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.datafixer.DataFixTypes;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateType;
 import net.minecraft.world.border.WorldBorder;
@@ -19,11 +18,10 @@ final class PeOldWorldBorder extends PersistentState {
         var states = world.getPersistentStateManager();
         if (states.get(TYPE) != null) return;
 
-        // Pre-2.2 saves center the finite terrain on chunk zero.
-        var anchor = generator.usesPeSpawn() ? generator.initialSpawnAnchor() : BlockPos.ORIGIN;
+        var location = generator.finiteBorder();
         WorldBorder border = world.getWorldBorder();
-        border.setCenter(Math.floorDiv(anchor.getX(), 16) * 16.0, Math.floorDiv(anchor.getZ(), 16) * 16.0);
-        border.setSize(256.0);
+        border.setCenter(location.centerX(), location.centerZ());
+        border.setSize(net.mcpe.worldgen.core.PeWorldBorderLocation.WIDTH);
         states.getOrCreate(TYPE).markDirty();
     }
 }

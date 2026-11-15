@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric.client;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.LinkedHashMap;
 import net.mcpe.worldgen.fabric.PeBiomeSource;
 import net.mcpe.worldgen.fabric.PeChunkGenerator;
@@ -7,10 +9,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.world.CreateWorldScreen;
-import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
-import net.minecraft.client.gui.widget.ScrollableLayoutWidget;
 import net.minecraft.client.world.GeneratorOptionsHolder;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.screen.ScreenTexts;
@@ -33,11 +32,8 @@ public final class PeCustomizeScreen extends Screen {
         "World generation from Pocket Edition Alpha 0.1.3 to Alpha 0.8.1. Also includes world generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.2 using the Old world type.",
         "World generation from Pocket Edition Alpha 0.9.5 and Alpha 0.16.2."
     };
-    private enum Page { MAIN, CATEGORIES, VERSIONS }
     private final CreateWorldScreen parent;
     private boolean old;
-    private boolean viewingFinite;
-    private Page page = Page.MAIN;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
         super(label("title"));
@@ -49,9 +45,22 @@ public final class PeCustomizeScreen extends Screen {
         return Text.translatable("pe_worldgen.customize." + key, args);
     }
 
-    private void navigate(Page target) {
-        page = target;
-        clearAndInit();
+    private void openCategories() {
+        var choices = new ArrayList<PePresetScreen.Choice>();
+        for (int i = 0; i < CATEGORIES.length; i++) {
+            boolean finite = i == 0;
+            Text description = i < DESCRIPTIONS.length ? Text.literal(DESCRIPTIONS[i]) : Text.empty();
+            Runnable open = i < DESCRIPTIONS.length ? () -> openVersions(finite) : null;
+            choices.add(new PePresetScreen.Choice(CATEGORIES[i], description, open));
+        }
+        client.setScreen(new PePresetScreen(this, label("presets"), choices));
+    }
+
+    private void openVersions(boolean finite) {
+        String category = finite ? FINITE : INFINITE;
+        var version = new PePresetScreen.Choice("0.11.1", Text.literal(category + " 0.11.1"),
+            () -> importPreset(finite));
+        client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), List.of(version)));
     }
 
     private ButtonWidget button(Text text, int x, int y, int w, Runnable action) {
@@ -63,41 +72,10 @@ public final class PeCustomizeScreen extends Screen {
 
     @Override protected void init() {
         int mid = width / 2;
-        if (page != Page.MAIN) {
-            int listWidth = Math.min(340, width - 32);
-            if (page == Page.CATEGORIES) {
-                var rows = DirectionalLayoutWidget.vertical().spacing(3);
-                for (int index = 0; index < CATEGORIES.length; index++) {
-                    boolean finite = index == 0;
-                    var choice = ButtonWidget.builder(Text.literal(CATEGORIES[index]), b -> {
-                        viewingFinite = finite;
-                        navigate(Page.VERSIONS);
-                    }).width(listWidth).build();
-                    choice.active = index < DESCRIPTIONS.length;
-                    if (choice.active) choice.setTooltip(Tooltip.of(Text.literal(DESCRIPTIONS[index])));
-                    rows.add(choice);
-                }
-                rows.refreshPositions();
-                var scroll = new ScrollableLayoutWidget(client, rows, height - 70);
-                scroll.setWidth(listWidth + 12);
-                scroll.setHeight(height - 70);
-                scroll.refreshPositions();
-                scroll.setPosition(mid - scroll.getWidth() / 2, 34);
-                scroll.forEachChild(this::addDrawableChild);
-            } else {
-                Text description = Text.literal(DESCRIPTIONS[viewingFinite ? 0 : 1]);
-                int lines = textRenderer.wrapLines(description, listWidth).size();
-                button(Text.literal("0.11.1"), mid - listWidth / 2, 49 + lines * textRenderer.fontHeight,
-                    listWidth, () -> { old = viewingFinite; navigate(Page.MAIN); });
-            }
-            button(ScreenTexts.BACK, mid - 75, height - 27, 150, this::close);
-            return;
-        }
-
         int y = top();
         int half = half();
         int presetWidth = Math.min(width - 16, Math.max(200, textRenderer.getWidth(presetLabel()) + 18));
-        button(presetLabel(), mid - presetWidth / 2, y, presetWidth, () -> navigate(Page.CATEGORIES));
+        button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
         for (int i = 0; i < 3; i++) {
             var setting = button(Text.literal(i == 0 ? "Setting" : "WIP"), mid - half + 102, y + 24 + i * 24,
                 Math.max(65, half * 2 - 140), () -> {});
@@ -144,13 +122,7 @@ public final class PeCustomizeScreen extends Screen {
         client.setScreen(parent);
     }
 
-    @Override public void close() {
-        switch (page) {
-            case MAIN -> client.setScreen(parent);
-            case CATEGORIES -> navigate(Page.MAIN);
-            case VERSIONS -> navigate(Page.CATEGORIES);
-        }
-    }
+    @Override public void close() { client.setScreen(parent); }
 
     @Override public void renderBackground(DrawContext context, int x, int y, float delta) {
         renderBackgroundTexture(context, Identifier.ofVanilla("textures/block/dirt.png"), 0, 0, 0, 0, width, height);
@@ -159,24 +131,12 @@ public final class PeCustomizeScreen extends Screen {
 
     @Override public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-        Text heading = switch (page) {
-            case MAIN -> title;
-            case CATEGORIES -> label("presets");
-            case VERSIONS -> Text.literal(viewingFinite ? FINITE : INFINITE);
-        };
-        context.drawCenteredTextWithShadow(textRenderer, heading, width / 2, top() - 16, 0xffffffff);
-        if (page == Page.VERSIONS) {
-            int w = Math.min(340, width - 32);
-            context.drawWrappedTextWithShadow(textRenderer, Text.literal(DESCRIPTIONS[viewingFinite ? 0 : 1]),
-                (width - w) / 2, 36, w, 0xffdddddd);
-        }
-        if (page == Page.MAIN) {
-            int right = width / 2 - half() + 95;
-            String[] labels = {"Java Edition Content", "WIP", "WIP"};
-            for (int i = 0; i < labels.length; i++) {
-                context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
-                    top() + 30 + i * 24, 0xffffffff);
-            }
+        context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 16, 0xffffffff);
+        int right = width / 2 - half() + 95;
+        String[] labels = {"Java Edition Content", "WIP", "WIP"};
+        for (int i = 0; i < labels.length; i++) {
+            context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
+                top() + 30 + i * 24, 0xffffffff);
         }
     }
 }
