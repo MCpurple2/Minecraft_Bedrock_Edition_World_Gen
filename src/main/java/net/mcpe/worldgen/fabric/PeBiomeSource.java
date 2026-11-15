@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.mcpe.worldgen.core.PeWorldGenerator;
+import net.mcpe.worldgen.core.PeAlphaClimate;
 import net.minecraft.registry.RegistryEntryLookup;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -26,6 +27,9 @@ public final class PeBiomeSource extends BiomeSource {
         Codec.BOOL.optionalFieldOf("old", false).forGetter(source -> source.old)
     ).apply(instance, PeBiomeSource::new));
     private final boolean old;
+    private final Map<Long,PeAlphaClimate.Type[]> alphaChunks = new LinkedHashMap<>(256,.75f,true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<Long,PeAlphaClimate.Type[]> entry) { return size() > 256; }
+    };
     private final Map<Integer, RegistryEntry<Biome>> palette = new LinkedHashMap<>();
     private final RegistryEntry<Biome> voidBiome;
     private final Map<String,RegistryEntry<Biome>> extra = new LinkedHashMap<>();
@@ -38,6 +42,8 @@ public final class PeBiomeSource extends BiomeSource {
 
     public PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old) {
         this.old = old;
+        for (var type : PeAlphaClimate.Type.values())
+            extra.put(type.path(),biomes.getOrThrow(RegistryKey.of(RegistryKeys.BIOME,Identifier.of("pe_worldgen",type.path()))));
         voidBiome = lookup(biomes, "the_void");
         for (String name : new String[]{"ocean","frozen_ocean","deep_ocean","warm_ocean","lukewarm_ocean","cold_ocean","deep_lukewarm_ocean","deep_cold_ocean","deep_frozen_ocean","bamboo_jungle"})
             extra.put(name,lookup(biomes,name));
@@ -70,6 +76,7 @@ public final class PeBiomeSource extends BiomeSource {
         core = generator;
         climate = new PeOceanClimate(seed);
         areas.clear();
+        alphaChunks.clear();
     }
     @Override protected MapCodec<? extends BiomeSource> getCodec() { return CODEC; }
     @Override protected Stream<RegistryEntry<Biome>> biomeStream() {
@@ -82,6 +89,13 @@ public final class PeBiomeSource extends BiomeSource {
         // Moderner Beta PRE rule: apply the out-of-bounds predicate before resolving any PE biome.
         var border = generator.finiteBorder();
         if (border != null && border.outsideBiomeCell(x, z)) return voidBiome;
+        var alpha = generator.alphaClimate();
+        if (alpha != null) {
+            int cx = x >> 2, cz = z >> 2;
+            long key = ((long)cx << 32) | Integer.toUnsignedLong(cz);
+            var chunk = alphaChunks.computeIfAbsent(key, unused -> alpha.area(cx<<4,cz<<4,16,16));
+            return extra.get(chunk[(x&3)*4+(z&3)*64].path());
+        }
         int id = sample(x,z);
         String replacement=climate.biome(id,x,z,options,this::sample);
         return replacement==null ? palette.getOrDefault(id,palette.get(1)) : extra.get(replacement);

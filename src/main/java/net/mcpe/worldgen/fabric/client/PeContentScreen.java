@@ -54,7 +54,7 @@ final class PeContentScreen extends Screen {
             if (item.requiresOceanBiomes()) dependent.add(button);
         }
         updateDependencies();
-        for (String group : List.of("pillage","buzzy","nether_group")) section(body,group,w);
+        for (String group : List.of("pillage","buzzy","nether_group","caves_cliffs_i")) section(body,group,w);
         refreshFeatures();
         var scroll = new ScrollableLayoutWidget(client, body, height - 68);
         scroll.setHeight(height - 68);

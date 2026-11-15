@@ -87,7 +87,7 @@ final class PePresetTransferScreen extends Screen {
                         ? PeContentSettings.CODEC.parse(JsonOps.INSTANCE,json.get("java_content")).getOrThrow() : PeContentSettings.DEFAULT;
                     var importedBedrock = json.has("bedrock_features")
                         ? PeBedrockSettings.CODEC.parse(JsonOps.INSTANCE,json.get("bedrock_features")).getOrThrow()
-                        : PeBedrockSettings.defaults(json.get("world_type").getAsString().equals("finite"), importedSettings.portalOverride());
+                        : PeBedrockSettings.defaults(imported,json.get("world_type").getAsString().equals("finite"), importedSettings.portalOverride());
                     switch (json.get("world_type").getAsString()) {
                         case "finite" -> parent.importPreset(true, imported, importedSettings, importedBedrock);
                         case "infinite" -> parent.importPreset(false, imported, importedSettings, importedBedrock);

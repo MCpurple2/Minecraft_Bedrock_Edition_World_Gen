@@ -40,6 +40,8 @@ public final class PeBiomes {
     public static float depth(int id){return DEPTH[exists(id)?id:1];}
     public static float scale(int id){return SCALE[exists(id)?id:1];}
     private final L raw, zoomed;
+    private PeAlphaClimate alpha;
+    void setAlphaClimate(PeAlphaClimate climate) { alpha = climate; }
     private final long seed;
     private final boolean old;
     public PeBiomes(long seed, boolean old) {
@@ -76,7 +78,7 @@ public final class PeBiomes {
         biome=layer(1000,"smooth",biome);
         raw=new L(100,"mix",biome,river); zoomed=layer(10,"voronoi",raw);
     }
-    public synchronized int[] rawArea(int x,int z,int width,int height) { return raw.area(x,z,width,height); }
+    public synchronized int[] rawArea(int x,int z,int width,int height) { return alpha == null ? raw.area(x,z,width,height) : alpha.terrainArea(x,z,width,height,4); }
     /** BiomeSource::findValidSpawnPosition reads a 10x10 result as a linear buffer.
      * The ten entries after it still belong to SmoothLayer's 12x12 input. */
     synchronized PeWorldGenerator.Spawn initialSpawn() {
@@ -108,7 +110,7 @@ public final class PeBiomes {
             default -> false;
         };
     }
-    public synchronized int[] zoomedArea(int x,int z,int width,int height) { return zoomed.area(x,z,width,height); }
+    public synchronized int[] zoomedArea(int x,int z,int width,int height) { return alpha == null ? zoomed.area(x,z,width,height) : alpha.terrainArea(x,z,width,height,1); }
     public int biomeAt(int x,int z) { return zoomedArea(x,z,1,1)[0]; }
     private L layer(long salt,String kind,L p) { return new L(salt,kind,p,null); }
     private L zoom(long salt,L p,boolean fuzzy) {return layer(salt,fuzzy?"fuzzy":"zoom",p);}

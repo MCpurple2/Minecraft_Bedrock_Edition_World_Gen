@@ -30,7 +30,8 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
         AQUATIC("aquatic_group","aquatic_update_features"),
         PILLAGE("pillage","village_and_pillage_update_features"),
         BEES("buzzy","buzzy_bees_update_features"),
-        NETHER("nether_group","nether_update_features");
+        NETHER("nether_group","nether_update_features"),
+        CAVES_CLIFFS_I("caves_cliffs_i","caves_cliffs_part_i_features");
 
         final String group, key;
         Update(String group,String key) { this.group=group; this.key=key; }
@@ -70,7 +71,7 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
         var json = GSON.fromJson(text, JsonObject.class);
         if (json == null) throw new JsonParseException("Invalid settings");
         boolean legacy = json.has("features");
-        if (json.size() != (legacy ? 2 : Update.values().length) + (json.has("allow_nether_portals") ? 1 : 0)) throw new JsonParseException("Invalid groups");
+        if (json.size() != (legacy ? 2 : Update.values().length - (json.has(Update.CAVES_CLIFFS_I.key) ? 0 : 1)) + (json.has("allow_nether_portals") ? 1 : 0)) throw new JsonParseException("Invalid groups");
         var water = EnumSet.noneOf(Aquatic.class);
         var aquatic = group(json,legacy ? "aquatic_features" : Update.AQUATIC.key);
         if (aquatic.size()!=Aquatic.values().length) throw new JsonParseException("Invalid aquatic settings");
@@ -79,11 +80,11 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
         var enabled=EnumSet.noneOf(PeContent.class);
         if (legacy) {
             var fields=group(json,"features");
-            if (fields.size()!=PeContent.values().length) throw new JsonParseException("Invalid feature list");
-            for (var f : PeContent.values()) if (flag(fields,f.key())) enabled.add(f);
+            if (fields.size()!=java.util.Arrays.stream(PeContent.values()).filter(f -> !f.group.equals(Update.CAVES_CLIFFS_I.group)).count()) throw new JsonParseException("Invalid feature list");
+            for (var f : PeContent.values()) if (!f.group.equals(Update.CAVES_CLIFFS_I.group) && flag(fields,f.key())) enabled.add(f);
         } else {
             for (var update : Update.values()) {
-                if (update == Update.AQUATIC) continue;
+                if (update == Update.AQUATIC || update == Update.CAVES_CLIFFS_I && !json.has(update.key)) continue;
                 var fields=group(json,update.key);
                 int expected=0;
                 for (var f : PeContent.values()) if (f.group.equals(update.group)) {

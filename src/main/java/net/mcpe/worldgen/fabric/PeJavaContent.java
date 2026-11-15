@@ -87,6 +87,39 @@ final class PeJavaContent {
         }
     }
 
+    private enum CavesFeature {
+        GEODE(PeContent.AMETHYST_GEODE,2,0), TUFF(PeContent.TUFF_BLOBS,6,0),
+        DEEPSLATE(PeContent.DEEPSLATE_BLOBS,6,1), COPPER(PeContent.COPPER_ORE,6,2),
+        LICHEN(PeContent.GLOW_LICHEN,9,0);
+
+        final PeContent toggle;
+        final int step, index;
+        final net.minecraft.registry.RegistryKey<net.minecraft.world.gen.feature.PlacedFeature> key;
+        CavesFeature(PeContent toggle, int step, int index) {
+            this.toggle = toggle;
+            this.step = step;
+            this.index = index;
+            this.key = net.minecraft.registry.RegistryKey.of(net.minecraft.registry.RegistryKeys.PLACED_FEATURE,
+                net.minecraft.util.Identifier.of("pe_worldgen","je117_" + toggle.key()));
+        }
+    }
+
+    static void generateCavesContent(StructureWorldAccess world, PeChunkGenerator generator,
+                                    ChunkPos chunk, long seed, PeContentSettings settings) {
+        net.minecraft.util.math.random.ChunkRandom random = null;
+        long populationSeed = 0;
+        for (var feature : CavesFeature.values()) {
+            if (!settings.has(feature.toggle)) continue;
+            if (random == null) {
+                random = new net.minecraft.util.math.random.ChunkRandom(new LocalRandom(0));
+                populationSeed = random.setPopulationSeed(seed,chunk.getStartX(),chunk.getStartZ());
+            }
+            random.setDecoratorSeed(populationSeed,feature.index,feature.step);
+            world.getRegistryManager().getOrThrow(net.minecraft.registry.RegistryKeys.PLACED_FEATURE)
+                .getOrThrow(feature.key).value().generateUnregistered(world, generator, random, chunk.getStartPos());
+        }
+    }
+
     static void beesAndBerries(StructureWorldAccess world, ChunkPos chunk, long seed, net.mcpe.worldgen.core.PeWorldGenerator core, PeContentSettings settings) {
         var random = new LocalRandom(seed ^ chunk.x * 341873128712L ^ chunk.z * 132897987541L);
         int[] biomes = core.biomeArea(chunk.getStartX(),chunk.getStartZ(),16,16);

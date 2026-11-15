@@ -40,13 +40,19 @@ public enum PeContent {
     BASTIONS("nether_group"),
     NETHER_FOSSILS("nether_group"),
     NETHER_PORTALS("nether_group"),
-    OVERWORLD_PORTALS("nether_group");
+    OVERWORLD_PORTALS("nether_group"),
+    COPPER_ORE("caves_cliffs_i"),
+    AMETHYST_GEODE("caves_cliffs_i"),
+    TUFF_BLOBS("caves_cliffs_i"),
+    DEEPSLATE_BLOBS("caves_cliffs_i"),
+    GLOW_LICHEN("caves_cliffs_i");
     public final String group;
     PeContent(String group) { this.group=group; }
     public String key() { return name().toLowerCase(Locale.ROOT); }
 
     public static Set<PeContent> defaults(PeRelease release, boolean finite) {
-        var flags = EnumSet.of(VILLAGES, DESERT_VILLAGES, DESERT_WELLS);
+        var flags = EnumSet.noneOf(PeContent.class);
+        if (release.hasWorldTypes()) flags.addAll(Set.of(VILLAGES, DESERT_VILLAGES, DESERT_WELLS));
         if (release.compareTo(PeRelease.V0_12_3)>=0) flags.addAll(Set.of(FORTRESS, QUARTZ));
         if (!finite) {
             flags.addAll(Set.of(STRONGHOLDS, MINESHAFTS, DUNGEONS));

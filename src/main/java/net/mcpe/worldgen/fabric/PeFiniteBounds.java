@@ -19,7 +19,7 @@ public record PeFiniteBounds(int centerX, int centerZ, int width, boolean syncNe
             return null;
         var border = generator.finiteBorder();
         return border == null ? null : new PeFiniteBounds(border.centerX(), border.centerZ(), border.width(),
-            generator.isOld() && generator.bedrock().syncNether());
+            generator.bedrock().finiteWorld() && generator.bedrock().syncNether());
     }
 
     public PeWorldBorderLocation location() { return new PeWorldBorderLocation(centerX, centerZ, width); }

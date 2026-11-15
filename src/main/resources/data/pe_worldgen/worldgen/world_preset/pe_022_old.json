@@ -1,0 +1,41 @@
+{
+  "dimensions": {
+    "minecraft:overworld": {
+      "generator": {
+        "type": "pe_worldgen:pe_0111",
+        "pe_spawn": true,
+        "native_biome_seeds": true,
+        "old": true,
+        "biome_source": {
+          "type": "pe_worldgen:pe_0111",
+          "old": true
+        },
+        "pe_version": "0.2.2"
+      },
+      "type": "minecraft:overworld"
+    },
+    "minecraft:the_nether": {
+      "generator": {
+        "type": "pe_worldgen:pe_012_nether",
+        "biome_source": {
+          "type": "minecraft:fixed",
+          "biome": "minecraft:nether_wastes"
+        },
+        "java_content": {
+          "features": []
+        }
+      },
+      "type": "minecraft:the_nether"
+    },
+    "minecraft:the_end": {
+      "generator": {
+        "biome_source": {
+          "type": "minecraft:the_end"
+        },
+        "type": "minecraft:noise",
+        "settings": "minecraft:end"
+      },
+      "type": "minecraft:the_end"
+    }
+  }
+}

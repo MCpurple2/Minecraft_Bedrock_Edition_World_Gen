@@ -18,7 +18,7 @@ public final class PeOldWorldBorder extends PersistentState {
         if (!nether && !dimension.equals(net.minecraft.world.World.OVERWORLD)) return null;
         var overworld = nether ? world.getServer().getOverworld() : world;
         if (overworld == null || !(overworld.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe)) return null;
-        if (nether && !(pe.isOld() && pe.bedrock().syncNether())) return null;
+        if (nether && !(pe.bedrock().finiteWorld() && pe.bedrock().syncNether())) return null;
         return pe.finiteBorder();
     }
 

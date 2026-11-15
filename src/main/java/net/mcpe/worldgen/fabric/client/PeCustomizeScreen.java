@@ -44,7 +44,7 @@ public final class PeCustomizeScreen extends Screen {
     private final CreateWorldScreen parent;
     private boolean old;
     private PeContentSettings settings = PeContentSettings.DEFAULT.resolve(PeRelease.V0_11_1,false);
-    private PeBedrockSettings bedrock = PeBedrockSettings.defaults(false, java.util.Optional.empty());
+    private PeBedrockSettings bedrock = PeBedrockSettings.defaults(PeRelease.V0_11_1,false, java.util.Optional.empty());
     private PeRelease release = PeRelease.V0_11_1;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
@@ -111,7 +111,7 @@ public final class PeCustomizeScreen extends Screen {
             int start = left + Math.min(174, half * 2 - 70);
             var setting = button(Text.literal(enabled ? "Settings" : "WIP"), start, y + 24 + i * 24,
                 mid + half - start - 25, () -> client.setScreen(exclusive
-                    ? new PeBedrockScreen(this, old, bedrock, value -> bedrock = value)
+                    ? new PeBedrockScreen(this, bedrock, value -> bedrock = value)
                     : new PeContentScreen(this, settings, value -> settings = value)));
             setting.active = enabled;
             var advanced = button(Text.literal(enabled ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
@@ -126,7 +126,7 @@ public final class PeCustomizeScreen extends Screen {
                 old = false;
                 release = PeRelease.V0_11_1;
                 settings = PeContentSettings.DEFAULT.resolve(release,old);
-                bedrock = PeBedrockSettings.defaults(old,java.util.Optional.empty());
+                bedrock = PeBedrockSettings.defaults(release,old,java.util.Optional.empty());
             }
             client.setScreen(this);
         }, label("reset"), label("reset_prompt"), label("reset"), ScreenTexts.CANCEL)));
@@ -160,7 +160,7 @@ public final class PeCustomizeScreen extends Screen {
         release = selectedRelease;
         old = selectedOld;
         settings = PeContentSettings.DEFAULT.resolve(release,old);
-        bedrock = PeBedrockSettings.defaults(old,java.util.Optional.empty());
+        bedrock = PeBedrockSettings.defaults(release,old,java.util.Optional.empty());
         client.setScreen(this);
     }
 

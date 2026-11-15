@@ -55,7 +55,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         PeBedrockSettings.CODEC.optionalFieldOf("bedrock_features").forGetter(g -> java.util.Optional.of(g.bedrock))
     ).apply(instance, (biome,old,spawn,nativeSeeds,release,settings,bedrock) ->
         new PeChunkGenerator(biome,old,spawn,nativeSeeds,release,settings,
-            bedrock.orElseGet(() -> PeBedrockSettings.defaults(old,settings.portalOverride())))));
+            bedrock.orElseGet(() -> PeBedrockSettings.defaults(release,old,settings.portalOverride())))));
     private final PeContentSettings settings;
     private final PeBedrockSettings bedrock;
     public PeBedrockSettings bedrock() { return bedrock; }
@@ -83,7 +83,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     }
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds, PeRelease release, PeContentSettings settings) {
-        this(biomeSource, old, peSpawn, nativeBiomeSeeds, release, settings, PeBedrockSettings.defaults(old, settings.portalOverride()));
+        this(biomeSource, old, peSpawn, nativeBiomeSeeds, release, settings, PeBedrockSettings.defaults(release,old, settings.portalOverride()));
     }
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds,
@@ -186,6 +186,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         synchronized (current) {
             current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
             if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
+            PeJavaContent.generateCavesContent(world,this,chunk.getPos(),worldSeed,settings);
             if (settings.overworldContent()) super.generateFeatures(world,chunk,structures);
             if (settings.has(PeContent.NESTS) || settings.has(PeContent.GIANT_BERRIES) || settings.has(PeContent.BERRIES)
                 || settings.has(PeContent.FLOWERS) || settings.has(PeContent.DARK_BIRCH))

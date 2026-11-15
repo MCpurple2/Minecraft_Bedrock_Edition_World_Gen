@@ -16,16 +16,19 @@ final class PeBedrockScreen extends Screen {
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().serializeNulls().setStrictness(Strictness.STRICT).create();
     private final Screen parent;
     private final Consumer<PeBedrockSettings> apply;
-    private final boolean old;
-    private boolean portals, sync;
+    private final java.util.List<ClickableWidget> borderControls = new java.util.ArrayList<>();
+    private boolean portals, sync, finite, early;
     private String size, minX, minZ;
     private ButtonWidget save;
+    private PeBedrockSettings lastValid;
 
-    PeBedrockScreen(Screen parent, boolean old, PeBedrockSettings settings, Consumer<PeBedrockSettings> apply) {
+    PeBedrockScreen(Screen parent, PeBedrockSettings settings, Consumer<PeBedrockSettings> apply) {
         super(TITLE);
         this.parent = parent;
-        this.old = old;
+        finite = settings.finiteWorld();
+        early = settings.pre09Biomes();
         this.apply = apply;
+        lastValid = settings;
         portals = settings.allowPortals();
         sync = settings.syncNether();
         size = Integer.toString(settings.size());
@@ -39,9 +42,10 @@ final class PeBedrockScreen extends Screen {
 
     private PeBedrockSettings value() {
         try {
-            var result = new PeBedrockSettings(portals, sync, Integer.parseInt(size), coordinate(minX), coordinate(minZ));
-            return result.valid() ? result : null;
-        } catch (NumberFormatException ex) { return null; }
+            var result = new PeBedrockSettings(portals, sync, Integer.parseInt(size), coordinate(minX), coordinate(minZ), finite, early);
+            if (result.valid()) { lastValid = result; return result; }
+        } catch (NumberFormatException ignored) { /* An unfinished input is normal while editing. */ }
+        return finite ? null : new PeBedrockSettings(portals,sync,lastValid.size(),lastValid.minX(),lastValid.minZ(),false,early);
     }
 
     @Override protected void init() {
@@ -49,11 +53,21 @@ final class PeBedrockScreen extends Screen {
         var body = DirectionalLayoutWidget.vertical().spacing(5);
         body.add(CyclingButtonWidget.onOffBuilder(portals).build(0,0,w,20,
             Text.literal("Allow Nether Portal"),(b,v) -> portals = v));
-        body.add(CyclingButtonWidget.onOffBuilder(sync).build(0,0,w,20,
-            Text.literal("Sync Nether Border Size with Overworld"),(b,v) -> sync = v)).active = old;
+        body.add(CyclingButtonWidget.onOffBuilder(finite).build(0,0,w,20,
+            Text.literal("Finite World"),(b,v) -> {
+                finite = v;
+                updateBorderControls();
+                save.active = value() != null;
+            }));
+        borderControls.clear();
+        borderControls.add(body.add(CyclingButtonWidget.onOffBuilder(sync).build(0,0,w,20,
+            Text.literal("Sync Nether Border Size with Overworld"),(b,v) -> sync = v)));
         field(body, w, "Border side (chunks, -1 = unlimited)", size, v -> size = v);
         field(body, w, "Minimum chunk X (blank = automatic)", minX, v -> minX = v);
         field(body, w, "Minimum chunk Z (blank = automatic)", minZ, v -> minZ = v);
+        updateBorderControls();
+        body.add(CyclingButtonWidget.onOffBuilder(early).build(0,0,w,20,
+            Text.literal("Use Pre-0.9.x Biomes"), (b,v) -> early = v));
         var scroll = new ScrollableLayoutWidget(client, body, height - 66);
         scroll.setHeight(height - 66);
         scroll.refreshPositions();
@@ -70,11 +84,19 @@ final class PeBedrockScreen extends Screen {
             .dimensions(width/2+4,height-26,half,20).build());
     }
 
+    private void updateBorderControls() {
+        for (var widget : borderControls) {
+            widget.active = finite;
+            if (widget instanceof TextFieldWidget field) field.setEditable(finite);
+        }
+    }
+
     private void field(DirectionalLayoutWidget body, int width, String label, String initial, Consumer<String> update) {
         var row = body.add(DirectionalLayoutWidget.horizontal().spacing(4));
         var name = Text.literal(label);
         row.add(new TextWidget(width-74,20,name,textRenderer));
         var field = row.add(new TextFieldWidget(textRenderer,70,20,name));
+        borderControls.add(field);
         field.setMaxLength(10);
         field.setText(initial);
         field.setChangedListener(text -> {
@@ -86,11 +108,13 @@ final class PeBedrockScreen extends Screen {
     static Screen editor(Screen parent, PeBedrockSettings settings, Consumer<PeBedrockSettings> apply) {
         var obj = new JsonObject();
         obj.addProperty("allow_nether_portal",settings.allowPortals());
+        obj.addProperty("finite_world",settings.finiteWorld());
         obj.addProperty("sync_nether_border_size",settings.syncNether());
         obj.addProperty("border_size_chunks",settings.size());
         obj.addProperty("min_chunk_x",settings.minX().orElse(null));
         obj.addProperty("min_chunk_z",settings.minZ().orElse(null));
-        return new PeSettingsJsonScreen<>(parent, TITLE, JSON.toJson(obj), PeBedrockScreen::parse, apply);
+        obj.addProperty("use_pre_09_biomes",settings.pre09Biomes());
+        return new PeSettingsJsonScreen<>(parent, TITLE, JSON.toJson(obj), text -> parse(text,settings), apply);
     }
 
     private static int integer(JsonElement element) {
@@ -107,12 +131,14 @@ final class PeBedrockScreen extends Screen {
         return p.getAsBoolean();
     }
 
-    private static PeBedrockSettings parse(String text) {
+    private static PeBedrockSettings parse(String text, PeBedrockSettings current) {
         var o = JSON.fromJson(text, JsonObject.class);
-        if (!o.keySet().equals(Set.of("allow_nether_portal","sync_nether_border_size","border_size_chunks",
+        if (!o.has("finite_world")) o.addProperty("finite_world",integer(o.get("border_size_chunks")) != -1);
+        if (!o.has("use_pre_09_biomes")) o.addProperty("use_pre_09_biomes",current.pre09Biomes());
+        if (!o.keySet().equals(Set.of("finite_world","use_pre_09_biomes","allow_nether_portal","sync_nether_border_size","border_size_chunks",
                 "min_chunk_x","min_chunk_z"))) throw new JsonParseException("Invalid Bedrock settings");
         var result = new PeBedrockSettings(flag(o.get("allow_nether_portal")),flag(o.get("sync_nether_border_size")),
-            integer(o.get("border_size_chunks")),optional(o.get("min_chunk_x")),optional(o.get("min_chunk_z")));
+            integer(o.get("border_size_chunks")),optional(o.get("min_chunk_x")),optional(o.get("min_chunk_z")),flag(o.get("finite_world")),flag(o.get("use_pre_09_biomes")));
         if (!result.valid()) throw new JsonParseException("Invalid bounds");
         return result;
     }

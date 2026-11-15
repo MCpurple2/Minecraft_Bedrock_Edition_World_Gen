@@ -48,14 +48,16 @@ final class PeBiomePreviewScreen extends Screen {
         originX = (bounds == null ? spawn.x() & ~15 : bounds.centerX()) - extent / 2;
         originZ = (bounds == null ? spawn.z() & ~15 : bounds.centerZ()) - extent / 2;
         int margin=36, stride=extent+2*margin;
-        int[] raw=generator.biomeArea(originX-margin,originZ-margin,stride,stride);
+        var alpha = generator.alphaClimate();
+        int[] raw=alpha == null ? generator.biomeArea(originX-margin,originZ-margin,stride,stride) : null;
+        var early = alpha == null ? null : alpha.area(originX,originZ,extent,extent);
         var climate=new PeOceanClimate(seed);
         java.util.function.IntBinaryOperator sample=(qx,qz)->raw[(qx*4-originX+margin)+(qz*4-originZ+margin)*stride];
         biomes=new int[extent*extent];
         for(int z=0; z<extent; z+=4) for(int x=0; x<extent; x+=4) {
-            int qx=(originX+x)>>2,qz=(originZ+z)>>2,id=sample.applyAsInt(qx,qz);
-            String name=bounds != null && bounds.outsideBiomeCell(qx,qz) ? "the_void" : climate.biome(id,qx,qz,settings,sample);
-            int value=name==null?id:256+OVERLAYS.indexOf(name);
+            int qx=(originX+x)>>2,qz=(originZ+z)>>2,id=early == null ? sample.applyAsInt(qx,qz) : 0;
+            String name=bounds != null && bounds.outsideBiomeCell(qx,qz) ? "the_void" : early == null ? climate.biome(id,qx,qz,settings,sample) : null;
+            int value=early != null && !"the_void".equals(name) ? 300 + early[x+z*extent].ordinal() : name==null?id:256+OVERLAYS.indexOf(name);
             for(int dz=0;dz<4;dz++) java.util.Arrays.fill(biomes,(z+dz)*extent+x,(z+dz)*extent+x+4,value);
         }
     }
@@ -65,7 +67,7 @@ final class PeBiomePreviewScreen extends Screen {
             var image = new NativeImage(extent, extent, false);
             for (int z = 0; z < extent; z++) for (int x = 0; x < extent; x++) {
                 int raw = biomes[x + z * extent], id = raw & 127;
-                image.setColorArgb(x, z, 0xff000000 | (raw>=256 ? OVERLAY_COLORS[raw-256] : id < COLORS.length ? COLORS[id] : 0x888888));
+                image.setColorArgb(x, z, 0xff000000 | (raw>=300 ? COLORS[net.mcpe.worldgen.core.PeAlphaClimate.Type.values()[raw-300].terrainBiome] : raw>=256 ? OVERLAY_COLORS[raw-256] : id < COLORS.length ? COLORS[id] : 0x888888));
             }
             var texture = new NativeImageBackedTexture(() -> "PE biome preview", image);
             client.getTextureManager().registerTexture(MAP, texture);
@@ -94,7 +96,10 @@ final class PeBiomePreviewScreen extends Screen {
             int base = id & 127;
             String name = base < NAMES.length ? NAMES[base] : "Biome";
             String caption = (originX + dx) + ", " + (originZ + dz) + "   " + name + (id >= 128 ? " M" : "") + " (" + id + ")";
-            if(id>=256) {
+            if(id>=300) {
+                String path=net.mcpe.worldgen.core.PeAlphaClimate.Type.values()[id-300].path();
+                caption=(originX+dx)+", "+(originZ+dz)+"   "+Text.translatable("biome.pe_worldgen."+path).getString();
+            } else if(id>=256) {
                 String path=OVERLAYS.get(id-256);
                 String label=Text.translatable("biome."+(path.equals("bamboo_jungle_hills")?"pe_worldgen.":"minecraft.")+path).getString();
                 caption=(originX+dx)+", "+(originZ+dz)+"   "+label;

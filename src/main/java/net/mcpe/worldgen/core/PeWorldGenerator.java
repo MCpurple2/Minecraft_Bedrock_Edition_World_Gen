@@ -64,6 +64,13 @@ public final class PeWorldGenerator {
         biomes = new PeBiomes(seed, old, nativeBiomeSeeds, release);
     }
 
+    private PeAlphaClimate alphaClimate;
+    public PeAlphaClimate alphaClimate() { return alphaClimate; }
+    public void useAlphaClimate(boolean enabled) {
+        alphaClimate = enabled ? new PeAlphaClimate(worldSeed) : null;
+        biomes.setAlphaClimate(alphaClimate);
+    }
+
     public int structureBiomeAt(int chunkX,int chunkZ) {
         return biomes.rawArea(chunkX*4+2,chunkZ*4+2,1,1)[0];
     }
