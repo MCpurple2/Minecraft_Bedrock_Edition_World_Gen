@@ -96,8 +96,9 @@ final class PeBiomeExtras {
                 PeOres.place(w,r,x,y,z,14,0,8);
             }
     }
-    static void post(PePopulationWorld w,PeRandom r,int id,int bx,int bz){
-        if((id==2||id==17)&&r.nextInt(500)==0)desertWell(w,bx+r.nextInt(16),bz+r.nextInt(16));
+    static void post(PePopulationWorld w,PeRandom r,int id,int bx,int bz){post(w,r,id,bx,bz,true);}
+    static void post(PePopulationWorld w,PeRandom r,int id,int bx,int bz,boolean wells){
+        if(wells && (id==2||id==17)&&r.nextInt(500)==0)desertWell(w,bx+r.nextInt(16),bz+r.nextInt(16));
         if(id==3||id==20||id==34||id==131||id==162){
             int count=3+r.nextInt(6);
             for(int i=0;i<count;i++){

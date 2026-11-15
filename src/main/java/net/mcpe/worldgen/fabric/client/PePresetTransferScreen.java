@@ -123,6 +123,9 @@ final class PePresetTransferScreen extends Screen {
                     {"type":"minecraft:noise","settings":"minecraft:nether","biome_source":{"type":"minecraft:multi_noise","preset":"minecraft:nether"}}
                     """);
                 dims.getAsJsonObject("minecraft:the_nether").add("generator",gen);
+            } else {
+                dims.getAsJsonObject("minecraft:the_nether").getAsJsonObject("generator").add("java_content",
+                    PeContentSettings.CODEC.encodeStart(JsonOps.INSTANCE,settings).getOrThrow());
             }
             zip.write(data.toString().getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();

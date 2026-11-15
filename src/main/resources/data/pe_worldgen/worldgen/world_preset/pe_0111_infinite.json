@@ -19,6 +19,9 @@
         "biome_source": {
           "type": "minecraft:fixed",
           "biome": "minecraft:nether_wastes"
+        },
+        "java_content": {
+          "features": []
         }
       },
       "type": "minecraft:the_nether"

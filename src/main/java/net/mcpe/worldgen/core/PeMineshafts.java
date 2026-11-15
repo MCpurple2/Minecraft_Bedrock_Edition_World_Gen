@@ -12,7 +12,10 @@ public final class PeMineshafts {
     private final Map<Long,List<Piece>> starts=new LinkedHashMap<>(512,0.75f,true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long,List<Piece>> e) {return size()>2048;}
     };
-    public PeMineshafts(long seed) {
+    private final boolean badlands;
+    public PeMineshafts(long seed) { this(seed,true); }
+    public PeMineshafts(long seed,boolean badlands) {
+        this.badlands=badlands;
         this.seed=(int)seed;
         PeRandom r=new PeRandom(seed);
         xScale=(r.nextRawInt()>>>2)*2+1; zScale=(r.nextRawInt()>>>2)*2+1;
@@ -40,6 +43,7 @@ public final class PeMineshafts {
         if(r.nextFloat()>=0.004f || r.nextInt(80)>=Math.max(Math.abs(x),Math.abs(z))) return List.of();
         int id=w.biomeAt(x*16,z*16);
         boolean mesa=(id>=37&&id<=39)||(id>=165&&id<=167);
+        if(mesa && !badlands) return List.of();
         List<Piece> pieces=new Layout().generate(r,x,z,mesa);
         String state=w.loadVillageState(stateKey(x,z));
         if(state!=null) {

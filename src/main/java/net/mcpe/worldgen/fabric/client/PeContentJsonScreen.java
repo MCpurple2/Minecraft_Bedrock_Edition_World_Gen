@@ -1,6 +1,7 @@
 package net.mcpe.worldgen.fabric.client;
 
 import com.google.gson.*;
+import net.mcpe.worldgen.core.PeContent;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -39,9 +40,9 @@ final class PeContentJsonScreen extends Screen {
         var flags = new JsonObject();
         for (var item : Aquatic.values()) flags.addProperty(item.asString(), settings.water().contains(item));
         json.add("aquatic_features", flags);
-        json.addProperty("village_and_pillage",settings.villages());
-        json.addProperty("buzzy_bees",settings.bees());
-        json.addProperty("nether_update",settings.netherUpdate());
+        var features=new JsonObject();
+        for (var f : PeContent.values()) features.addProperty(f.key(),settings.flags().contains(f));
+        json.add("features",features);
         json.add("allow_nether_portals",settings.portalOverride().map(JsonPrimitive::new)
             .<JsonElement>map(v -> v).orElse(JsonNull.INSTANCE));
         return GSON.toJson(json);
@@ -53,15 +54,18 @@ final class PeContentJsonScreen extends Screen {
     }
     static PeContentSettings parse(String text) {
         var json = GSON.fromJson(text, JsonObject.class);
-        if (json == null || json.size()!=5 || !json.has("allow_nether_portals") ||
+        if (json == null || json.size()!=3 || !json.has("allow_nether_portals") ||
             !(json.get("aquatic_features") instanceof JsonObject flags) || flags.size()!=Aquatic.values().length)
             throw new JsonParseException("Invalid settings fields");
         var selected = EnumSet.noneOf(Aquatic.class);
         for (var item : Aquatic.values()) if (flag(flags,item.asString())) selected.add(item);
         Optional<Boolean> portals = json.get("allow_nether_portals").isJsonNull() ? Optional.empty()
             : Optional.of(flag(json,"allow_nether_portals"));
-        return new PeContentSettings(selected,flag(json,"village_and_pillage"),flag(json,"buzzy_bees"),
-            flag(json,"nether_update"),portals);
+        if (!(json.get("features") instanceof JsonObject features) || features.size()!=PeContent.values().length)
+            throw new JsonParseException("Invalid feature list");
+        var enabled=EnumSet.noneOf(PeContent.class);
+        for (var f : PeContent.values()) if (flag(features,f.key())) enabled.add(f);
+        return PeContentSettings.configured(selected,enabled,portals);
     }
 
     @Override protected void init() {

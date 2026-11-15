@@ -10,6 +10,7 @@ public enum PeRelease {
 
     private final String id;
     PeRelease(String id) { this.id = id; }
+    public boolean hasWorldTypes() { return Integer.parseInt(id.split("\\.")[1]) >= 9; }
     public String id() { return id; }
     public boolean supports(boolean finite) { return !finite || this == V0_11_1; }
     public String presetPath(boolean finite) {

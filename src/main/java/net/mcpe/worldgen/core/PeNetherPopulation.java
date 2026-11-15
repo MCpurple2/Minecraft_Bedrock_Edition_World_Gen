@@ -6,6 +6,9 @@ public final class PeNetherPopulation {
     private PeNetherPopulation() {}
 
     public static void decorate(PePopulationWorld world, PeRandom random, int chunkX, int chunkZ, PeNetherFortresses fortresses) {
+        decorate(world,random,chunkX,chunkZ,fortresses,true);
+    }
+    public static void decorate(PePopulationWorld world, PeRandom random, int chunkX, int chunkZ, PeNetherFortresses fortresses,boolean quartz) {
         int x = chunkX * 16, z = chunkZ * 16;
         world.beginLiquidTicks(chunkX,chunkZ);
         if(fortresses!=null)fortresses.populate(world,random,chunkX,chunkZ);
@@ -24,7 +27,7 @@ public final class PeNetherPopulation {
             PeVegetation.scatter(world,random,x+8+random.nextInt(16),random.nextInt(128),
                 z+8+random.nextInt(16),mushroom,0,64,0);
         }
-        for (int i=0;i<16;i++)
+        if(quartz) for (int i=0;i<16;i++)
             PeOres.place(world,random,x+random.nextInt(16),10+random.nextInt(108),z+random.nextInt(16),153,0,14);
         for (int i=0;i<16;i++)
             spring(world,x+random.nextInt(16),10+random.nextInt(108),z+random.nextInt(16),true);

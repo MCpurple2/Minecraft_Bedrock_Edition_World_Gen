@@ -90,7 +90,7 @@ public final class PeOceanClimate {
                 default -> deep?"deep_ocean":"ocean";
             };
         }
-        if(settings.villages() && (id==21 || id==22) && bamboo.sample(x/32.0,z/32.0,0)>0.36)
+        if(settings.has(net.mcpe.worldgen.core.PeContent.BAMBOO) && (id==21 || id==22) && bamboo.sample(x/32.0,z/32.0,0)>0.36)
             return id==22?"bamboo_jungle_hills":"bamboo_jungle";
         return null;
     }

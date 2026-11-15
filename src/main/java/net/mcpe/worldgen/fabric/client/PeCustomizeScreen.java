@@ -42,7 +42,7 @@ public final class PeCustomizeScreen extends Screen {
     };
     private final CreateWorldScreen parent;
     private boolean old;
-    private PeContentSettings settings = PeContentSettings.DEFAULT;
+    private PeContentSettings settings = PeContentSettings.DEFAULT.resolve(PeRelease.V0_11_1,false);
     private PeRelease release = PeRelease.V0_11_1;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
@@ -71,12 +71,14 @@ public final class PeCustomizeScreen extends Screen {
     }
 
     private void openVersions(boolean finite) {
-        String category = finite ? FINITE : INFINITE;
+        String kind = finite ? "Finite" : "Infinite";
+        String category = "Pocket Edition Alpha " + kind + " World Presets";
         var choices = new ArrayList<PePresetScreen.Choice>();
         for (PeRelease candidate : PeRelease.values()) {
             if (candidate.supports(finite)) {
-                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal(category + " " + candidate.id()),
-                    () -> importPreset(finite, candidate)));
+                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal("Explore Minecraft Pocket Edition (Alpha) " + candidate.id() + "'s " + (candidate.hasWorldTypes() ? kind + " " : "") + "World"),
+                    () -> importPreset(finite, candidate), Identifier.of("pe_worldgen",
+                        "textures/gui/presets/"+candidate.presetPath(finite)+".png")));
             }
         }
         client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), choices));
@@ -96,7 +98,7 @@ public final class PeCustomizeScreen extends Screen {
         int presetWidth = Math.min(width - 16, Math.max(200, textRenderer.getWidth(presetLabel()) + 18));
         button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
         for (int i = 0; i < 3; i++) {
-            var setting = button(Text.literal(i == 0 ? "Setting" : "WIP"), mid - half + 102, y + 24 + i * 24,
+            var setting = button(Text.literal(i == 0 ? "Settings" : "WIP"), mid - half + 102, y + 24 + i * 24,
                 Math.max(65, half * 2 - 140), () -> client.setScreen(new PeContentScreen(this, old, settings, value -> settings = value)));
             setting.active = i == 0;
             var advanced = button(Text.literal(i == 0 ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
@@ -109,7 +111,7 @@ public final class PeCustomizeScreen extends Screen {
             if (answer) {
                 old = false;
                 release = PeRelease.V0_11_1;
-                settings = PeContentSettings.DEFAULT;
+                settings = PeContentSettings.DEFAULT.resolve(release,old);
             }
             client.setScreen(this);
         }, label("reset"), label("reset_prompt"), label("reset"), ScreenTexts.CANCEL)));
@@ -132,13 +134,16 @@ public final class PeCustomizeScreen extends Screen {
 
     void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported) {
         if (!selectedRelease.supports(selectedOld)) throw new IllegalArgumentException("Unsupported finite preset");
-        settings = imported;
-        importPreset(selectedOld,selectedRelease);
+        release = selectedRelease;
+        old = selectedOld;
+        settings = imported.resolve(release,old);
+        client.setScreen(this);
     }
     void importPreset(boolean selectedOld, PeRelease selectedRelease) {
         if (!selectedRelease.supports(selectedOld)) throw new IllegalArgumentException("Unsupported finite preset");
         release = selectedRelease;
         old = selectedOld;
+        settings = PeContentSettings.DEFAULT.resolve(release,old);
         client.setScreen(this);
     }
 
@@ -157,7 +162,7 @@ public final class PeCustomizeScreen extends Screen {
                     ? new NoiseChunkGenerator(MultiNoiseBiomeSource.create(registries.getOrThrow(RegistryKeys.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                         .getOrThrow(MultiNoiseBiomeSourceParameterLists.NETHER)), registries.getOrThrow(RegistryKeys.CHUNK_GENERATOR_SETTINGS)
                         .getOrThrow(ChunkGeneratorSettings.NETHER))
-                    : new PeNetherChunkGenerator(new FixedBiomeSource(registries.getOrThrow(RegistryKeys.BIOME).getOrThrow(BiomeKeys.NETHER_WASTES)));
+                    : new PeNetherChunkGenerator(new FixedBiomeSource(registries.getOrThrow(RegistryKeys.BIOME).getOrThrow(BiomeKeys.NETHER_WASTES)),selectedSettings);
                 updated.put(DimensionOptions.NETHER, new DimensionOptions(nether.dimensionTypeEntry(), replacement));
             }
             return new DimensionOptionsRegistryHolder(updated);
@@ -176,7 +181,7 @@ public final class PeCustomizeScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 16, 0xffffffff);
         int right = width / 2 - half() + 95;
-        String[] labels = {"Java Edition Content", "WIP", "WIP"};
+        String[] labels = {"Java Edition Contents Provider", "WIP", "WIP"};
         for (int i = 0; i < labels.length; i++) {
             context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
                 top() + 30 + i * 24, 0xffffffff);

@@ -133,7 +133,8 @@ public final class PeVillagePainter {
                 case 64 -> id=acacia?196:193;
             }
         }
-        boolean source = (id==8 || id==10) && meta==0;
+        // The smithy basin is still being assembled here; leave its lava at rest.
+        boolean source = (id==8 || (id==10 && piece.type!=Type.SMITHY)) && meta==0;
         boolean changed = source && (world.getBlock(wx,wy,wz)!=id || world.getData(wx,wy,wz)!=meta);
         world.setBlock(wx,wy,wz,id,meta);
         if (changed) world.tickStructureLiquid(wx,wy,wz,id);

@@ -26,8 +26,13 @@ final class PeScatteredStructures {
     private static final Map<String, List<Command>> TEMPLATES = new ConcurrentHashMap<>();
     private final int worldSeed, xScale, zScale;
     private final PeRelease release;
+    private final java.util.Set<PeContent> flags;
 
     PeScatteredStructures(long seed, PeRelease release) {
+        this(seed,release,PeContent.defaults(release,false));
+    }
+    PeScatteredStructures(long seed, PeRelease release, java.util.Set<PeContent> flags) {
+        this.flags=flags;
         worldSeed = (int)seed;
         PeRandom random = new PeRandom(seed);
         xScale = (random.nextRawInt() >>> 1) | 1;
@@ -44,7 +49,7 @@ final class PeScatteredStructures {
     }
 
     void populate(PePopulationWorld world, PeRandom random, int cx, int cz) {
-        if (release.compareTo(PeRelease.V0_13_2) < 0) return;
+        if (!flags.contains(PeContent.DESERT_PYRAMIDS) && !flags.contains(PeContent.HUTS) && !flags.contains(PeContent.JUNGLE_PYRAMIDS)) return;
         // All native pieces face direction zero. The widest is the 21-block pyramid.
         for (int x = cx - 1; x <= cx; x++) for (int z = cz - 1; z <= cz; z++) {
             if (!candidate(x, z)) continue;
@@ -54,15 +59,15 @@ final class PeScatteredStructures {
             String template;
             int floor;
             List<Loot> loot = EARLY_LOOT;
-            if (biome == 2 || biome == 17) {
+            if ((biome == 2 || biome == 17) && flags.contains(PeContent.DESERT_PYRAMIDS)) {
                 template = later ? "desert_015" : "desert_013";
                 floor = 64;
                 if (later) loot = DESERT_LOOT;
-            } else if ((biome == 6 || biome == 134) && release.compareTo(PeRelease.V0_14_3) >= 0) {
+            } else if ((biome == 6 || biome == 134) && flags.contains(PeContent.HUTS)) {
                 if (cx != x || cz != z) continue;
                 template = later ? "hut_015" : "hut_014";
                 floor = ground(world, bx, bz, 7, 9) + 1;
-            } else if ((biome == 21 || biome == 22) && later) {
+            } else if ((biome == 21 || biome == 22) && flags.contains(PeContent.JUNGLE_PYRAMIDS)) {
                 if (cx != x || cz != z) continue;
                 template = "jungle_015";
                 floor = ground(world, bx, bz, 12, 15);

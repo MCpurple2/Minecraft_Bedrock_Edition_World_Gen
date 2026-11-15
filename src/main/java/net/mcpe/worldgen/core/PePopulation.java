@@ -10,6 +10,7 @@ public final class PePopulation {
     private final long seed;
     private final boolean old;
     private final boolean replaceVillages;
+    private final java.util.Set<PeContent> flags;
     private final PeWorldGenerator core;
     private final PeVillageGenerator villages;
     private final PeScatteredStructures scattered;
@@ -23,12 +24,16 @@ public final class PePopulation {
         this(seed,old,core,false);
     }
     public PePopulation(long seed,boolean old,PeWorldGenerator core,boolean replaceVillages) {
+        this(seed,old,core,replaceVillages,PeContent.defaults(core.release(),old));
+    }
+    public PePopulation(long seed,boolean old,PeWorldGenerator core,boolean replaceVillages,java.util.Set<PeContent> flags) {
+        this.flags=flags;
         this.replaceVillages = replaceVillages;
         this.seed=seed;this.old=old;this.core=core;
-        villages=new PeVillageGenerator(seed,old,core.biomes(),core.release());
-        monuments=core.release()==PeRelease.V0_16_2 && !old ? new PeOceanMonuments(seed,core.biomes()) : null;
-        scattered=new PeScatteredStructures(seed,core.release());
-        mineshafts=new PeMineshafts(seed);
+        villages=new PeVillageGenerator(seed,old,core.biomes(),core.release(),flags);
+        monuments=flags.contains(PeContent.MONUMENTS) ? new PeOceanMonuments(seed,core.biomes()) : null;
+        scattered=new PeScatteredStructures(seed,core.release(),flags);
+        mineshafts=new PeMineshafts(seed,flags.contains(PeContent.BADLANDS_MINES));
         strongholds=new PeStrongholds(seed,core.biomes(),core.release());
     }
     /** Native explicitly resets to this seed before structures and again before biome decoration. */
@@ -50,10 +55,13 @@ public final class PePopulation {
         lakes(world,later?random:core.lakeRandom(cx,cz),biome,bx,bz);
         if(later)random.setSeed(chunkSeed);
         if(structures) {
-            if (!replaceVillages) villages.generate(world,random,cx,cz);
-            if(!old){mineshafts.populate(world,random,cx,cz);strongholds.populate(world,random,cx,cz); scattered.populate(world,random,cx,cz); if (monuments!=null) monuments.populate(world,random,cx,cz);}
+            if (flags.contains(PeContent.VILLAGES) && !replaceVillages) villages.generate(world,random,cx,cz);
+            if(flags.contains(PeContent.MINESHAFTS)) mineshafts.populate(world,random,cx,cz);
+            if(flags.contains(PeContent.STRONGHOLDS)) strongholds.populate(world,random,cx,cz);
+            scattered.populate(world,random,cx,cz);
+            if (monuments!=null) monuments.populate(world,random,cx,cz);
         }
-        if(!old)for(int i=0;i<8;i++) {
+        if(flags.contains(PeContent.DUNGEONS))for(int i=0;i<8;i++) {
             int x=bx+8+(random.nextRawInt()&15),y=random.nextRawInt()&127,z=bz+8+(random.nextRawInt()&15);
             PeSmallStructures.dungeon(world,random,x,y,z);
         }
@@ -89,7 +97,7 @@ public final class PePopulation {
         try{PeVegetation.decorate(world,random,biome,bx,bz,old,settings);}
         finally{settings.grass=configuredGrass;}
         PeSprings.decorate(world,random,bx,bz);
-        PeBiomePopulation.postDecorate(world,random,biome,bx,bz,old);
+        PeBiomeExtras.post(world,random,biome,bx,bz,flags.contains(PeContent.DESERT_WELLS));
         if(later)PeSnow.cover(world,bx,bz);else PeSnow.apply(world,bx,bz);
         world.finishLiquidTicks(cx,cz);
     }

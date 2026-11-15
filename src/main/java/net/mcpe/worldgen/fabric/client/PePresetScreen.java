@@ -27,7 +27,9 @@ final class PePresetScreen extends Screen {
     private ButtonWidget use;
     private boolean loaded;
 
-    record Choice(String name, Text description, Runnable select) {}
+    record Choice(String name, Text description, Runnable select, Identifier icon) {
+        Choice(String name,Text description,Runnable select) { this(name,description,select,null); }
+    }
 
     PePresetScreen(Screen parent, Text title, List<Choice> choices) {
         super(title);
@@ -123,7 +125,7 @@ final class PePresetScreen extends Screen {
         }
         @Override public void render(DrawContext context, int mouseX, int mouseY, boolean hovered, float delta) {
             int x = getContentX(), y = getContentY();
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, loaded ? ICON : FALLBACK, x, y, 0, 0,
+            context.drawTexture(RenderPipelines.GUI_TEXTURED, choice.icon()!=null ? choice.icon() : loaded ? ICON : FALLBACK, x, y, 0, 0,
                 ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
             boolean enabled = choice.select() != null;
             if (!enabled) context.fill(x, y, x + ICON_SIZE, y + ICON_SIZE, 0x88000000);
@@ -133,7 +135,7 @@ final class PePresetScreen extends Screen {
                 context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, arrow, x, y, ICON_SIZE, ICON_SIZE);
             }
             int left = x + ICON_SIZE + 3;
-            context.drawText(textRenderer, choice.name(), left, y + 1, enabled ? 0xff55ffff : 0xff888888, false);
+            context.drawText(textRenderer, choice.name(), left, y + 1, enabled ? (parent instanceof PePresetScreen ? 0xffffff55 : 0xff55ffff) : 0xff888888, false);
             int lineY = y + 13;
             for (var line : textRenderer.wrapLines(choice.description(), Math.max(1, list.getRowWidth() - 67))) {
                 context.drawText(textRenderer, line, left, lineY, 0xff999999, false);

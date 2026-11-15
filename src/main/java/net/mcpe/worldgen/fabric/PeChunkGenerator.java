@@ -36,6 +36,7 @@ import net.minecraft.world.ChunkRegion;
 import net.minecraft.world.World;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.mcpe.worldgen.core.PeContent;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -77,9 +78,9 @@ public final class PeChunkGenerator extends ChunkGenerator {
     }
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds, PeRelease release, PeContentSettings settings) {
-        super(biomeSource, biome -> PeJavaContent.features(biome, settings));
-        this.settings = settings;
-        if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.configure(settings);
+        super(biomeSource, biome -> PeJavaContent.features(biome, settings.resolve(release,old)));
+        this.settings = settings.resolve(release,old);
+        if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.configure(this.settings);
         if (!release.supports(old)) throw new IllegalArgumentException("Unsupported finite PE release: " + release.id());
         this.release = release;
         this.old = old;
@@ -118,7 +119,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
         engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds, release);
-        population = new PePopulation(seed,old,engine,settings.villages());
+        population = new PePopulation(seed,old,engine,settings.villages(),settings.flags());
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine, seed);
         chunks.clear();
         // Do not run Java stronghold-ring biome searches for a PE-only generator.
@@ -171,8 +172,18 @@ public final class PeChunkGenerator extends ChunkGenerator {
             current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
             if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
             if (settings.overworldContent()) super.generateFeatures(world,chunk,structures);
-            if (settings.bees()) PeJavaContent.beesAndBerries(world,chunk.getPos(),worldSeed,engine());
+            if (settings.has(PeContent.NESTS) || settings.has(PeContent.GIANT_BERRIES) || settings.has(PeContent.BERRIES)
+                || settings.has(PeContent.FLOWERS) || settings.has(PeContent.DARK_BIRCH))
+                PeJavaContent.beesAndBerries(world,chunk.getPos(),worldSeed,engine(),settings);
         }
+    }
+    @Override public net.minecraft.util.collection.WeightedPool<net.minecraft.world.biome.SpawnSettings.SpawnEntry> getEntitySpawnList(
+            net.minecraft.registry.entry.RegistryEntry<net.minecraft.world.biome.Biome> biome,StructureAccessor structures,
+            net.minecraft.entity.SpawnGroup group,BlockPos position) {
+        var pool=super.getEntitySpawnList(biome,structures,group,position);
+        if (group!=net.minecraft.entity.SpawnGroup.CREATURE || settings.has(PeContent.PANDAS)) return pool;
+        return net.minecraft.util.collection.WeightedPool.of(pool.getEntries().stream()
+            .filter(entry -> entry.value().type()!=net.minecraft.entity.EntityType.PANDA).toList());
     }
     @Override public void populateEntities(ChunkRegion region) {}
     @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {

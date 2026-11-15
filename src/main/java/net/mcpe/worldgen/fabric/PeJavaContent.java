@@ -2,6 +2,7 @@ package net.mcpe.worldgen.fabric;
 
 import net.mcpe.worldgen.fabric.PeContentSettings.Aquatic;
 
+import net.mcpe.worldgen.core.PeContent;
 import net.mcpe.worldgen.core.PeRandom;
 import net.mcpe.worldgen.core.PeVillagePlacement;
 import net.minecraft.block.Blocks;
@@ -38,7 +39,8 @@ final class PeJavaContent {
                     || options.enabled(Aquatic.KELP) && id.startsWith("kelp_")
                     || options.enabled(Aquatic.SEA_PICKLES) && id.equals("sea_pickle")
                     || options.enabled(Aquatic.CORAL_REEF) && id.equals("warm_ocean_vegetation")
-                    || options.enabled(Aquatic.ICEBERG) && (id.equals("iceberg_packed") || id.equals("iceberg_blue")) || options.villages() && bamboo) builder.addFeature(i, feature);
+                    || options.enabled(Aquatic.ICEBERG) && (id.equals("iceberg_packed") || id.equals("iceberg_blue")) || options.has(PeContent.BAMBOO) && bamboo
+                    || options.has(PeContent.FOSSILS) && id.equals("fossil_upper")) builder.addFeature(i, feature);
             }
         }
         return builder.build();
@@ -52,9 +54,11 @@ final class PeJavaContent {
                 case "shipwrecks" -> { if (settings.enabled(Aquatic.SHIPWRECK)) output.accept(entry); }
                 case "ocean_ruins" -> { if (settings.enabled(Aquatic.OCEAN_RUINS)) output.accept(entry); }
                 case "buried_treasures" -> { if (settings.enabled(Aquatic.BURIED_TREASURE)) output.accept(entry); }
-                case "pillager_outposts" -> { if (settings.villages()) output.accept(entry); }
+                case "woodland_mansions" -> { if (settings.has(PeContent.MANSIONS)) output.accept(entry); }
+                case "ruined_portals" -> { if (settings.has(PeContent.OVERWORLD_PORTALS)) output.accept(entry); }
+                case "pillager_outposts" -> { if (settings.has(PeContent.OUTPOSTS)) output.accept(entry); }
                 case "villages" -> {
-                    if (settings.villages()) output.accept(RegistryEntry.of(new StructureSet(entry.value().structures(), new VillagePlacement(core))));
+                    if (settings.villages()) output.accept(RegistryEntry.of(new StructureSet(entry.value().structures(), new VillagePlacement(core,settings))));
                 }
             }
         });
@@ -62,11 +66,12 @@ final class PeJavaContent {
 
     private static final class VillagePlacement extends RandomSpreadStructurePlacement {
         private final net.mcpe.worldgen.core.PeWorldGenerator core;
-        VillagePlacement(net.mcpe.worldgen.core.PeWorldGenerator core) { super(40, 12, SpreadType.LINEAR, 10387312); this.core=core; }
+        private final PeContentSettings settings;
+        VillagePlacement(net.mcpe.worldgen.core.PeWorldGenerator core, PeContentSettings settings) { super(40, 12, SpreadType.LINEAR, 10387312); this.core=core; this.settings=settings; }
         private boolean candidate(long seed,int x,int z,PeRandom random) {
             if(!core.isInsideChunk(x,z) || !PeVillagePlacement.isFeatureChunk(seed,x,z,1,random)) return false;
             int biome=core.structureBiomeAt(x,z);
-            return PeVillagePlacement.isAllowedBiome(biome,core.release());
+            return PeContent.villageBiome(biome,settings.flags(),core.release());
         }
         @Override protected boolean isStartChunk(StructurePlacementCalculator calculator, int x, int z) {
             int ox = Math.floorMod(x, 40), oz = Math.floorMod(z, 40);
@@ -82,13 +87,26 @@ final class PeJavaContent {
         }
     }
 
-    static void beesAndBerries(StructureWorldAccess world, ChunkPos chunk, long seed, net.mcpe.worldgen.core.PeWorldGenerator core) {
+    static void beesAndBerries(StructureWorldAccess world, ChunkPos chunk, long seed, net.mcpe.worldgen.core.PeWorldGenerator core, PeContentSettings settings) {
         var random = new LocalRandom(seed ^ chunk.x * 341873128712L ^ chunk.z * 132897987541L);
         int[] biomes = core.biomeArea(chunk.getStartX(),chunk.getStartZ(),16,16);
         for (int x=chunk.getStartX(); x<=chunk.getEndX(); x++) for (int z=chunk.getStartZ(); z<=chunk.getEndZ(); z++) {
             int biome = biomes[(x & 15) + 16*(z & 15)];
             var base = new BlockPos.Mutable(x, 0, z);
-            if (biome == 32 || biome == 33 || biome == 160 || biome == 161) {
+            if ((biome==29 || biome==157) && settings.has(PeContent.DARK_BIRCH) && random.nextInt(110)==0) {
+                int y=world.getTopY(net.minecraft.world.Heightmap.Type.OCEAN_FLOOR_WG,x,z);
+                while(y>1 && !world.getBlockState(base.set(x,y-1,z)).isOf(Blocks.GRASS_BLOCK) && y>50) y--;
+                net.mcpe.worldgen.core.PeTrees.Selected.BIRCH.place(new FabricPopulationWorld(world,core),
+                    new PeRandom(random.nextLong()),x,y,z);
+            }
+            if (settings.has(PeContent.FLOWERS) && (biome==1 || biome==4 || biome==132) && random.nextInt(128)==0) {
+                var flower=(biome==4 || biome==132 ? Blocks.LILY_OF_THE_VALLEY : Blocks.CORNFLOWER).getDefaultState();
+                int y=world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,x,z);
+                base.setY(y);
+                if(y>0 && y<128 && world.isAir(base) && flower.canPlaceAt(world,base)) world.setBlockState(base,flower,2);
+            }
+            boolean giant=biome==32 || biome==33 || biome==160 || biome==161;
+            if (giant && settings.has(PeContent.GIANT_BERRIES) || (biome==5 || biome==19 || biome==30 || biome==31) && settings.has(PeContent.BERRIES)) {
                 if (random.nextInt(64) != 0) continue;
                 int y = world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,x,z);
                 base.setY(y);
@@ -97,7 +115,7 @@ final class PeJavaContent {
                 continue;
             }
             int chance = switch(biome) { case 1,129,132 -> 20; case 4,18,27,28,155,156 -> 500; default -> 0; };
-            if (chance == 0) continue;
+            if (!settings.has(PeContent.NESTS) || chance == 0) continue;
             int top=world.getTopY(net.minecraft.world.Heightmap.Type.MOTION_BLOCKING,x,z);
             if(top<4 || !world.getBlockState(base.set(x,top-1,z)).isIn(net.minecraft.registry.tag.BlockTags.LEAVES)) continue;
             int trunk=top-2;

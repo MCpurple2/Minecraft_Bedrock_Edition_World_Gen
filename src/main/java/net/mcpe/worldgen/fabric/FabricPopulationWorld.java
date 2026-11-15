@@ -157,6 +157,16 @@ final class FabricPopulationWorld implements PePopulationWorld {
         if(!isInside(x,y,z))return;
         UUID uuid=UUID.nameUUIDFromBytes(("pe_worldgen:"+world.toServerWorld().getRegistryKey().getValue()+":"+key).getBytes(StandardCharsets.UTF_8));
         if(world.toServerWorld().getEntity(uuid)!=null)return;
+        if(profession==-1) {
+            var zombie=EntityType.ZOMBIE_VILLAGER.create(world.toServerWorld(),SpawnReason.STRUCTURE);
+            if(zombie!=null) {
+                zombie.setUuid(uuid);
+                zombie.refreshPositionAndAngles(x+0.5,y,z+0.5,0,0);
+                zombie.setPersistent();
+                world.spawnEntity(zombie);
+            }
+            return;
+        }
         VillagerEntity villager=EntityType.VILLAGER.create(world.toServerWorld(),SpawnReason.STRUCTURE);
         if(villager==null)throw new IllegalStateException("Cannot construct villager");
         villager.setUuid(uuid);

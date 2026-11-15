@@ -19,6 +19,7 @@ public final class PeVillageGenerator {
     private final PeBiomes biomes;
     private final PeRelease release;
     private final String prefix;
+    private final Set<PeContent> flags;
     private final ArrayList<Start> order=new ArrayList<>();
     private final ArrayList<Long> discovery=new ArrayList<>();
     private boolean initialized;
@@ -35,6 +36,10 @@ public final class PeVillageGenerator {
         this(seed, old, new PeBiomes(seed, old), PeRelease.V0_11_1);
     }
     PeVillageGenerator(long seed, boolean old, PeBiomes biomes, PeRelease release) {
+        this(seed,old,biomes,release,PeContent.defaults(release,old));
+    }
+    PeVillageGenerator(long seed,boolean old,PeBiomes biomes,PeRelease release,Set<PeContent> flags) {
+        this.flags=flags;
         worldSeed=Integer.toUnsignedLong((int)seed);this.biomes=biomes;this.release=release;
         prefix="pe0111:village:v1:"+Long.toUnsignedString(worldSeed)+":"+(old?"old":"infinite")+":";
     }
@@ -52,7 +57,7 @@ public final class PeVillageGenerator {
             if(discovery.contains(key))continue;
             if(!PeVillagePlacement.isFeatureChunk(worldSeed,x,z,1,layoutRandom))continue;
             int rawBiome=biomes.rawArea((x*16+8)>>2,(z*16+8)>>2,1,1)[0];
-            if(!PeVillagePlacement.isAllowedBiome(rawBiome,release))continue;
+            if(!PeContent.villageBiome(rawBiome,flags,release))continue;
             Start start=makeStart(x,z,layoutRandom);
             String saved=world.loadVillageState(prefix+key);
             if(saved!=null)restore(start,saved);
@@ -68,7 +73,7 @@ public final class PeVillageGenerator {
             for(int i=0;i<pieces.size();i++) {
                 Piece piece=pieces.get(i);
                 if(!piece.box.intersects(clip))continue;
-                PeVillagePainter.paint(piece,clip,new IdentifiedWorld(world,prefix+start.key+":piece:"+i),random);
+                PeVillagePainter.paint(piece,clip,new IdentifiedWorld(world,prefix+start.key+":piece:"+i, flags.contains(PeContent.ABANDONED) && new PeRandom(worldSeed ^ start.x*341873128712L ^ start.z*132897987541L).nextInt(50)==0),random);
                 world.saveVillageState(prefix+start.key,serialize(start));
             }
             start.processed.add(processHash);
@@ -77,7 +82,7 @@ public final class PeVillageGenerator {
     }
     private Start makeStart(int x,int z,PeRandom r) {
         int biome=biomes.biomeAt(x*16+2,z*16+2);
-        var style=PeVillageLayout.Style.fromBiome(biome,release);
+        var style=PeVillageLayout.Style.fromBiome(biome,PeRelease.V0_15_10);
         return new Start(x,z,PeVillageLayout.create(r,x,z,0,style));
     }
     private void initialize(PePopulationWorld world) {
@@ -143,10 +148,17 @@ public final class PeVillageGenerator {
         m=NUMBER.matcher(state.substring(b+marker.length()));
         while(m.find())s.processed.add(Integer.parseInt(m.group()));
     }
-    private record IdentifiedWorld(PePopulationWorld delegate,String identity) implements PePopulationWorld {
+    private record IdentifiedWorld(PePopulationWorld delegate,String identity,boolean abandoned) implements PePopulationWorld {
         public int getBlock(int x,int y,int z){return delegate.getBlock(x,y,z);}
         public int getData(int x,int y,int z){return delegate.getData(x,y,z);}
-        public void setBlock(int x,int y,int z,int id,int data){delegate.setBlock(x,y,z,id,data);}
+        public void setBlock(int x,int y,int z,int id,int data){
+            if(abandoned) {
+                if(id==64 || id==50) id=0;
+                else if(id==4 && Math.floorMod(x*31L+y*17L+z*13L,5)<2) id=48;
+                else if(id==102 && Math.floorMod(x+y+z,5)==0) id=30;
+            }
+            delegate.setBlock(x,y,z,id,data);
+        }
         public void tickStructureLiquid(int x,int y,int z,int id){delegate.tickStructureLiquid(x,y,z,id);}
         public int surfaceY(int x,int z){return delegate.surfaceY(x,z);}
         public int biomeAt(int x,int z){return delegate.biomeAt(x,z);}
@@ -154,7 +166,7 @@ public final class PeVillageGenerator {
         public void setChestLoot(int x,int y,int z,long seed,String table){delegate.setChestLoot(x,y,z,seed,table);}
         public void setChestSlot(int x,int y,int z,int slot,int item,int count){delegate.setChestSlot(x,y,z,slot,item,count);}
         public void setSpawner(int x,int y,int z,int id){delegate.setSpawner(x,y,z,id);}
-        public void spawnVillager(int x,int y,int z,int profession){delegate.spawnVillager(x,y,z,profession,identity+":"+x+":"+y+":"+z);}
+        public void spawnVillager(int x,int y,int z,int profession){delegate.spawnVillager(x,y,z,abandoned ? -1 : profession,identity+":"+x+":"+y+":"+z);}
         public void spawnVillager(int x,int y,int z,int profession,String key){delegate.spawnVillager(x,y,z,profession,key);}
         public String loadVillageState(String key){return delegate.loadVillageState(key);}
         public void saveVillageState(String key,String state){delegate.saveVillageState(key,state);}

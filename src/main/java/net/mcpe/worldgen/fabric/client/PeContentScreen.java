@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric.client;
 
+import net.mcpe.worldgen.core.PeContent;
+import java.util.EnumMap;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
@@ -18,7 +20,8 @@ final class PeContentScreen extends Screen {
     private final Consumer<PeContentSettings> apply;
     private final EnumSet<Aquatic> water = EnumSet.noneOf(Aquatic.class);
     private final List<ClickableWidget> dependent = new ArrayList<>();
-    private boolean villages, bees, nether;
+    private final EnumSet<PeContent> flags=EnumSet.noneOf(PeContent.class);
+    private final EnumMap<PeContent,ClickableWidget> buttons=new EnumMap<>(PeContent.class);
     private Optional<Boolean> portals;
 
     PeContentScreen(Screen parent, boolean finite, PeContentSettings initial, Consumer<PeContentSettings> apply) {
@@ -27,9 +30,7 @@ final class PeContentScreen extends Screen {
         this.finite = finite;
         this.apply = apply;
         water.addAll(initial.water());
-        villages = initial.villages();
-        bees = initial.bees();
-        nether = initial.netherUpdate();
+        flags.addAll(initial.flags());
         portals = initial.portalOverride();
     }
 
@@ -37,6 +38,9 @@ final class PeContentScreen extends Screen {
         int w = Math.min(310, width - 32);
         var body = DirectionalLayoutWidget.vertical().spacing(5);
         body.getMainPositioner().alignHorizontalCenter();
+        buttons.clear();
+        for (String group : List.of("classic","adventure_part1","adventure","scary","redstone","bountiful","frostburn","exploration"))
+            section(body,group,w);
         heading(body, "aquatic_group");
         dependent.clear();
         DirectionalLayoutWidget row = null;
@@ -52,12 +56,8 @@ final class PeContentScreen extends Screen {
             if (item.requiresOceanBiomes()) dependent.add(button);
         }
         updateDependencies();
-        heading(body, "villages");
-        body.add(toggle("enabled", villages, w, value -> villages = value));
-        heading(body, "bees");
-        body.add(toggle("enabled", bees, w, value -> bees = value));
-        heading(body, "nether");
-        body.add(toggle("enabled", nether, w, value -> nether = value));
+        for (String group : List.of("pillage","buzzy","nether_group")) section(body,group,w);
+        refreshFeatures();
         body.add(CyclingButtonWidget.builder((Integer mode) -> PeCustomizeScreen.label(
             mode == 0 ? finite ? "default_off" : "default_on" : mode == 1 ? "on" : "off"),
             portals.map(v -> v ? 1 : 2).orElse(0)).values(0,1,2)
@@ -71,10 +71,21 @@ final class PeContentScreen extends Screen {
         scroll.forEachChild(this::addDrawableChild);
         int half = (w-8)/2;
         addDrawableChild(ButtonWidget.builder(PeCustomizeScreen.label("save_settings"), b -> {
-            apply.accept(new PeContentSettings(water,villages,bees,nether,portals)); close();
+            apply.accept(PeContentSettings.configured(water,flags,portals)); close();
         }).dimensions(width/2-half-4,height-26,half,20).build());
         addDrawableChild(ButtonWidget.builder(ScreenTexts.CANCEL,b -> close()).dimensions(width/2+4,height-26,half,20).build());
     }
+    private void section(DirectionalLayoutWidget body,String group,int width) {
+        heading(body,group);
+        for (var f : PeContent.values()) if (f.group.equals(group)) {
+            var button=body.add(toggle("feature_"+f.key(), flags.contains(f), width, value -> {
+                if(value) flags.add(f); else flags.remove(f);
+                refreshFeatures();
+            }));
+            buttons.put(f,button);
+        }
+    }
+    private void refreshFeatures() { buttons.forEach((f,b) -> b.active=f.available(flags)); }
     private void updateDependencies() {
         dependent.forEach(button -> button.active = water.contains(Aquatic.OCEAN_BIOMES));
     }
