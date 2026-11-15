@@ -51,7 +51,20 @@ public enum PeContent {
     AMETHYST_GEODE("caves_cliffs_i"),
     TUFF_BLOBS("caves_cliffs_i"),
     DEEPSLATE_BLOBS("caves_cliffs_i"),
-    GLOW_LICHEN("caves_cliffs_i");
+    GLOW_LICHEN("caves_cliffs_i"),
+    NOISE_CAVES("caves_cliffs_ii"),
+    AQUIFERS("caves_cliffs_ii"),
+    LUSH_CAVES("caves_cliffs_ii"),
+    DRIPSTONE_CAVES("caves_cliffs_ii"),
+    DEEP_TERRAIN("caves_cliffs_ii"),
+    MODERN_ORES("caves_cliffs_ii"),
+    COPPER_VEINS("caves_cliffs_ii"),
+    IRON_VEINS("caves_cliffs_ii"),
+    MOUNTAIN_BIOMES("caves_cliffs_ii"),
+    MOUNTAIN_TERRAIN("caves_cliffs_ii"),
+    DEEP_DARK("wild_update"),
+    ANCIENT_CITIES("wild_update"),
+    MANGROVE_SWAMPS("wild_update");
     public static final Set<PeContent> NATURAL_TREES = Set.of(JUNGLE_TREES, MEGA_JUNGLE_TREES,
         ACACIA_TREES, DARK_OAK_TREES, MEGA_PINE_TREES, MEGA_SPRUCE_TREES);
 
@@ -79,6 +92,9 @@ public enum PeContent {
     }
     public boolean available(Set<PeContent> flags) {
         return switch(this) {
+            case COPPER_VEINS -> flags.contains(COPPER_ORE);
+            case IRON_VEINS -> flags.contains(DEEP_TERRAIN);
+            case ANCIENT_CITIES -> flags.contains(DEEP_TERRAIN) && flags.contains(DEEP_DARK);
             case SAVANNA,TAIGA,ABANDONED,DESERT_VILLAGES -> flags.contains(VILLAGES);
             case PANDAS -> flags.contains(BAMBOO);
             case SNOWY -> flags.contains(MODERN_VILLAGES);

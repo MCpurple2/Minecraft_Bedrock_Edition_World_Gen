@@ -139,5 +139,20 @@
   "pe_worldgen.customize.feature_mega_spruce_trees": "Generate Mega Spruce Trees",
   "pe_worldgen.customize.feature_jungle_trees": "Generate Jungle Trees",
   "pe_worldgen.customize.feature_mega_jungle_trees": "Generate Mega Jungle Trees",
-  "pe_worldgen.customize.screenshot": "Screenshot"
+  "pe_worldgen.customize.screenshot": "Screenshot",
+  "pe_worldgen.customize.caves_cliffs_ii": "1.18.x Caves & Cliffs Part II Contents",
+  "pe_worldgen.customize.wild_update": "1.19.x The Wild Update Contents",
+  "pe_worldgen.customize.feature_noise_caves": "Generate Noise Caves",
+  "pe_worldgen.customize.feature_aquifers": "Generate Aquifers",
+  "pe_worldgen.customize.feature_lush_caves": "Enable Lush Caves",
+  "pe_worldgen.customize.feature_dripstone_caves": "Enable Dripstone Caves",
+  "pe_worldgen.customize.feature_deep_terrain": "Generate Terrain Below Y=0",
+  "pe_worldgen.customize.feature_modern_ores": "Use 1.18.x Ore Distribution",
+  "pe_worldgen.customize.feature_copper_veins": "Generate Large Copper Ore Veins",
+  "pe_worldgen.customize.feature_iron_veins": "Generate Large Iron Ore Veins",
+  "pe_worldgen.customize.feature_mountain_biomes": "Enable 1.18.x Biomes",
+  "pe_worldgen.customize.feature_mountain_terrain": "Generate 1.18.x Mountain Terrain",
+  "pe_worldgen.customize.feature_deep_dark": "Enable Deep Dark",
+  "pe_worldgen.customize.feature_ancient_cities": "Generate Ancient Cities",
+  "pe_worldgen.customize.feature_mangrove_swamps": "Enable Mangrove Swamps"
 }

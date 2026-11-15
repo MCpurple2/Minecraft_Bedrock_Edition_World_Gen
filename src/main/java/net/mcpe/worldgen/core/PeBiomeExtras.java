@@ -103,7 +103,7 @@ final class PeBiomeExtras {
             int count=3+r.nextInt(6);
             for(int i=0;i<count;i++){
                 int x=bx+r.nextInt(16),y=4+r.nextInt(28),z=bz+r.nextInt(16);
-                if(w.getBlock(x,y,z)==1)w.setBlock(x,y,z,129,0);
+                if(w.usePeOreDistribution() && w.getBlock(x,y,z)==1)w.setBlock(x,y,z,129,0);
             }
             for(int i=0;i<7;i++){
                 int x=bx+r.nextInt(16),y=r.nextInt(32),z=bz+r.nextInt(16);

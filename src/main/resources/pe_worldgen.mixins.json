@@ -11,7 +11,8 @@
     "MonumentRoomsAccessor",
     "MonumentRoomShuffleMixin",
     "NetherCanyonMixin",
-    "PeNetherBoundsMixin"
+    "PeNetherBoundsMixin",
+    "PeFiniteFluidMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -115,6 +115,10 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public Vec3d initialPlayerPosition(ServerWorld world, BlockPos anchor) {
         int x = anchor.getX();
         int z = anchor.getZ();
+        if(settings.has(PeContent.MOUNTAIN_TERRAIN)) {
+            int feet=world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,x,z);
+            return new Vec3d(x+0.5,feet,z+0.5);
+        }
         var terrain = new FabricPopulationWorld(world, engine());
         int y = PeInitialPlayer.feetY(anchor.getY(), () -> {
             int solidY = terrain.topSolidY(x, z, true) - 1;
@@ -137,6 +141,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         population = new PePopulation(seed,old,engine,settings.villages(),settings.flags());
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine, seed);
         chunks.clear();
+        modernChunks.clear();
         // Do not run Java stronghold-ring biome searches for a PE-only generator.
         return StructurePlacementCalculator.create(noiseConfig, seed, biomeSource, PeJavaContent.structures(structures, settings, engine));
     }
@@ -154,10 +159,32 @@ public final class PeChunkGenerator extends ChunkGenerator {
         return chunks.computeIfAbsent(key, ignored -> core.terrainChunk(chunkX, chunkZ));
     }
 
+    private final Map<Long,BlockState[]> modernChunks = new LinkedHashMap<>(32,.75f,true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<Long,BlockState[]> e) { return size()>32; }
+    };
+    private synchronized BlockState[] modernChunk(int x,int z) {
+        if (!(biomeSource instanceof PeBiomeSource source) || !engine().isInsideChunk(x,z))return null;
+        var overlay=source.modernTerrain();
+        if(overlay==null || !overlay.changesBlocks())return null;
+        return modernChunks.computeIfAbsent(((long)x<<32)|Integer.toUnsignedLong(z),k->overlay.generate(generate(x,z),x,z));
+    }
     @Override protected MapCodec<? extends ChunkGenerator> getCodec() { return CODEC; }
 
     @Override
     public CompletableFuture<Chunk> populateNoise(Blender blender, NoiseConfig noise, StructureAccessor structures, Chunk chunk) {
+        var modern=modernChunk(chunk.getPos().x,chunk.getPos().z);
+        if(modern!=null) {
+            BlockPos.Mutable p=new BlockPos.Mutable();
+            for(int x=0;x<16;x++)for(int z=0;z<16;z++)for(int y=-64;y<320;y++) {
+                BlockState state=modern[(x*16+z)*384+y+64];
+                if(state==null)continue;
+                p.set(chunk.getPos().getStartX()+x,y,chunk.getPos().getStartZ()+z);
+                chunk.setBlockState(p,state);
+                if(!state.getFluidState().isEmpty())chunk.markBlockForPostProcessing(p);
+            }
+            Heightmap.populateHeightmaps(chunk, java.util.EnumSet.of(Heightmap.Type.OCEAN_FLOOR_WG,Heightmap.Type.WORLD_SURFACE_WG));
+            return CompletableFuture.completedFuture(chunk);
+        }
         var terrain = generate(chunk.getPos().x, chunk.getPos().z);
         byte[] data=terrain.blocks();
         if (data.length != 32768) throw new IllegalStateException("Expected 16x16x128 PE chunk");
@@ -186,6 +213,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         synchronized (current) {
             current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
             if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
+            PeModernOres.generate(world,this,chunk.getPos(),worldSeed,settings);
             PeJavaContent.generateCavesContent(world,this,chunk.getPos(),worldSeed,settings);
             if (settings.overworldContent()) super.generateFeatures(world,chunk,structures);
             if (settings.has(PeContent.NESTS) || settings.has(PeContent.GIANT_BERRIES) || settings.has(PeContent.BERRIES)
@@ -218,7 +246,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override
     public int getHeight(int x, int z, Heightmap.Type type, HeightLimitView world, NoiseConfig noise) {
         VerticalBlockSample column = getColumnSample(x, z, world, noise);
-        for (int y = 127; y >= 0; y--) {
+        for (int y = Math.min(world.getTopYInclusive(),settings.has(PeContent.MOUNTAIN_TERRAIN)?319:127); y >= Math.max(world.getBottomY(),settings.has(PeContent.DEEP_TERRAIN)?-64:0); y--) {
             if (type.getBlockPredicate().test(column.getState(y))) return y + 1;
         }
         return world.getBottomY();
@@ -232,6 +260,14 @@ public final class PeChunkGenerator extends ChunkGenerator {
         java.util.Arrays.fill(states, net.minecraft.block.Blocks.AIR.getDefaultState());
         int offset = (Math.floorMod(x, 16) * 16 + Math.floorMod(z, 16)) * 128;
         int bottom = world.getBottomY();
+        var modern=modernChunk(x>>4,z>>4);
+        if(modern!=null) {
+            int column=((x&15)*16+(z&15))*384;
+            for(int y=Math.max(-64,bottom);y<Math.min(320,bottom+states.length);y++) {
+                var b=modern[column+y+64];if(b!=null)states[y-bottom]=b;
+            }
+            return new VerticalBlockSample(bottom,states);
+        }
         for (int y = Math.max(0, bottom); y < Math.min(PeWorldGenerator.HEIGHT, bottom + states.length); y++) {
             states[y - bottom] = LegacyBlocks.state(Byte.toUnsignedInt(data[offset + y]),terrain.data()[offset+y]);
         }

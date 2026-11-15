@@ -5,6 +5,7 @@ package net.mcpe.worldgen.core;
  * surfaceY returns PE's skylight height, the first Y above light-blocking tiles
  * (0 for an empty column, capped at 127). */
 public interface PePopulationWorld {
+    default boolean usePeOreDistribution() { return true; }
     default PeRelease release() { return PeRelease.V0_11_1; }
     default void spawnHutWitch(int x, int y, int z) {}
     default void populateMonumentRooms(int x, int z, int direction, int rotationSeed, PeRandom random, int chunkX, int chunkZ) {}

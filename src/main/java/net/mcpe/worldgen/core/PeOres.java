@@ -51,6 +51,7 @@ public final class PeOres {
         float y1=(float)(y+r.nextInt(3)+offsetY), y2=(float)(y+r.nextInt(3)+offsetY);
         int steps = later ? size : size+1;
         int substrate = id == 153 ? 87 : 1;
+        boolean skip=!w.usePeOreDistribution() && (id==16 || id==15 || id==14 || id==73 || id==56 || id==21);
         for(int step=0;step<steps;step++) {
             float inverse=1.0f/(float)size, t=(float)step;
             float px=x1+t*(x2-x1)*inverse, py=y1+t*(y2-y1)*inverse, pz=z1+t*(z2-z1)*inverse;
@@ -59,6 +60,7 @@ public final class PeOres {
                 px=x1+fraction*(x2-x1); py=y1+fraction*(y2-y1); pz=z1+fraction*(z2-z1);
             }
             float thickness=(float)size*0.0625f*r.nextFloat();
+            if(skip)continue; // Preserve the PE decorator RNG for subsequent vegetation.
             float radius=(thickness+PeMth.sin((t*3.1415927f)/(float)size)*thickness)*0.5f+0.5f;
             float reciprocal=1.0f/radius;
             for(int xx=bound(px-radius, floorBounds);xx<=bound(px+radius, floorBounds);xx++) {

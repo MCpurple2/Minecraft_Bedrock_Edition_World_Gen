@@ -1,5 +1,7 @@
-Bedrock Edition World Generator Build 3.8 · IWBUMS
+Bedrock Edition World Generator Build 3.9 · IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.9 在 Java Edition Contents Provider 中加入 1.18 的十个开关与 1.19 的三个开关，全部 PE Alpha 预设默认关闭。可分别配置噪声洞穴、含水层、繁茂洞穴、溶洞、负高度地形、矿石分布、大型铜铁矿脉、山地群系与山地地形，以及深暗之域、远古城市与红树林沼泽。启用后在 PE 地形上组合 Java 生成器。旧版 JSON 可继续导入。
 
 Build 3.8 修复早期 PE 气候群系的自然选树。默认雨林与稀树草原选普通橡树，森林保留桦树分支，针叶林保留两种普通针叶树。JE 设置中的 1.7.x 分组控制金合欢、深色橡树、巨型松树与巨型云杉，Adventure Update Part II 分组控制普通和巨型丛林树。六项对 0.9 以前预设默认关闭，对 0.9.5 起预设默认允许。手动扩展早期群系时，深色橡树可出现在森林和季节林，巨型针叶树可出现在针叶林。普通丛林树开关同时控制使用丛林原木的矮灌木。设置影响新区块的自然生成。
 

@@ -35,7 +35,8 @@ final class PeJavaContent {
                 if (key == null || !key.getValue().getNamespace().equals("minecraft")) continue;
                 String id = key.getValue().getPath();
                 boolean bamboo = id.equals("bamboo") || id.equals("bamboo_light");
-                if (options.enabled(Aquatic.SEAGRASS) && id.startsWith("seagrass_")
+                if (modernDecoration(biome.getKey().orElseThrow().getValue().getPath(),id,options)
+                    || options.enabled(Aquatic.SEAGRASS) && id.startsWith("seagrass_")
                     || options.enabled(Aquatic.KELP) && id.startsWith("kelp_")
                     || options.enabled(Aquatic.SEA_PICKLES) && id.equals("sea_pickle")
                     || options.enabled(Aquatic.CORAL_REEF) && id.equals("warm_ocean_vegetation")
@@ -46,11 +47,26 @@ final class PeJavaContent {
         return builder.build();
     }
 
+    private static boolean modernDecoration(String biome,String feature,PeContentSettings options) {
+        return switch (biome) {
+            case "lush_caves" -> options.has(PeContent.LUSH_CAVES) && (feature.startsWith("lush_caves_")
+                || java.util.Set.of("ore_clay","rooted_azalea_tree","spore_blossom","cave_vines","classic_vines_cave_feature").contains(feature));
+            case "dripstone_caves" -> options.has(PeContent.DRIPSTONE_CAVES) && (feature.equals("large_dripstone")
+                || feature.equals("pointed_dripstone") || feature.equals("dripstone_cluster"));
+            case "deep_dark" -> options.has(PeContent.DEEP_DARK) && (feature.equals("sculk_vein") || feature.equals("sculk_patch_deep_dark"));
+            case "mangrove_swamp" -> options.has(PeContent.MANGROVE_SWAMPS) && java.util.Set.of(
+                "trees_mangrove","patch_grass_normal","patch_dead_bush","patch_waterlily","disk_grass").contains(feature);
+            case "meadow","grove" -> options.has(PeContent.MOUNTAIN_BIOMES) && java.util.Set.of(
+                "trees_grove","patch_grass_meadow","flower_meadow","trees_meadow","freeze_top_layer").contains(feature);
+            default -> false;
+        };
+    }
     static Stream<RegistryEntry<StructureSet>> structures(RegistryWrapper<StructureSet> registry, PeContentSettings settings, net.mcpe.worldgen.core.PeWorldGenerator core) {
         return registry.streamEntries().<RegistryEntry<StructureSet>>mapMulti((entry, output) -> {
             var key = entry.registryKey().getValue();
             if (!key.getNamespace().equals("minecraft")) return;
             switch (key.getPath()) {
+                case "ancient_cities" -> { if(settings.has(PeContent.ANCIENT_CITIES)) output.accept(entry); }
                 case "shipwrecks" -> { if (settings.enabled(Aquatic.SHIPWRECK)) output.accept(entry); }
                 case "ocean_ruins" -> { if (settings.enabled(Aquatic.OCEAN_RUINS)) output.accept(entry); }
                 case "buried_treasures" -> { if (settings.enabled(Aquatic.BURIED_TREASURE)) output.accept(entry); }
@@ -109,7 +125,7 @@ final class PeJavaContent {
         net.minecraft.util.math.random.ChunkRandom random = null;
         long populationSeed = 0;
         for (var feature : CavesFeature.values()) {
-            if (!settings.has(feature.toggle)) continue;
+            if (!settings.has(feature.toggle) || feature==CavesFeature.COPPER && settings.has(PeContent.MODERN_ORES)) continue;
             if (random == null) {
                 random = new net.minecraft.util.math.random.ChunkRandom(new LocalRandom(0));
                 populationSeed = random.setPopulationSeed(seed,chunk.getStartX(),chunk.getStartZ());

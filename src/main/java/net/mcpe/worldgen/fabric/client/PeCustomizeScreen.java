@@ -134,7 +134,7 @@ public final class PeCustomizeScreen extends Screen {
             long seed = GeneratorOptions.parseSeed(parent.getWorldCreator().getSeed())
                 .orElse(parent.getWorldCreator().getGeneratorOptionsHolder().generatorOptions().getSeed());
             var registries = parent.getWorldCreator().getGeneratorOptionsHolder().getCombinedRegistryManager();
-            var source = PeBiomeSource.preview(registries.getOrThrow(RegistryKeys.BIOME),seed,old,release,settings,bedrock);
+            var source = PeBiomeSource.preview(net.mcpe.worldgen.fabric.PeModernInputs.from(registries),registries.getOrThrow(RegistryKeys.BIOME),seed,old,release,settings,bedrock);
             client.setScreen(new PeBiomePreviewScreen(this,source,seed));
         });
         button(label("quick"), mid - half - 5, actions + 24, half,
@@ -172,7 +172,7 @@ public final class PeCustomizeScreen extends Screen {
         PeContentSettings selectedSettings = settings;
         PeBedrockSettings selectedBedrock = bedrock;
         parent.getWorldCreator().applyModifier((registries, dimensions) -> {
-            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true, selectedRelease, selectedSettings, selectedBedrock);
+            var generator = new PeChunkGenerator(new PeBiomeSource(net.mcpe.worldgen.fabric.PeModernInputs.from(registries),registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true, selectedRelease, selectedSettings, selectedBedrock);
             var updated = new LinkedHashMap<>(dimensions.dimensions());
             var overworld = registries.getOrThrow(RegistryKeys.DIMENSION_TYPE).getOrThrow(DimensionTypes.OVERWORLD);
             updated.put(DimensionOptions.OVERWORLD, new DimensionOptions(overworld, generator));

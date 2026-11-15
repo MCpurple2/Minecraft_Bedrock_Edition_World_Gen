@@ -34,12 +34,16 @@ import java.util.HashMap;
 
 /** The only population code which knows Minecraft/Fabric types. */
 final class FabricPopulationWorld implements PePopulationWorld {
+    private boolean peOres = true;
+    @Override public boolean usePeOreDistribution() { return peOres; }
     private PeLiquidTicks liquids;
     private final StructureWorldAccess world;
     private final PeWorldGenerator core;
     private final Map<Long,int[]> biomeAreas=new HashMap<>();
     private final Map<Long,Integer> columnHeights=new HashMap<>();
-    FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core){this.world=world;this.core=core;}
+    FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core){this.world=world;this.core=core;
+        if(world.toServerWorld().getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe)
+            peOres=!pe.settings().has(net.mcpe.worldgen.core.PeContent.MODERN_ORES);}
     /** Nether uses the PE 0.12 engine and a single fixed biome. */
     FabricPopulationWorld(StructureWorldAccess world){this.world=world;this.core=null;}
     @Override public PeRelease release(){return core==null?PeRelease.V0_12_3:core.release();}

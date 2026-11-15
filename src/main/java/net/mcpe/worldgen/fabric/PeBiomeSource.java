@@ -23,6 +23,7 @@ import java.util.stream.Stream;
  * original PE layers at their original resolution inside the core. */
 public final class PeBiomeSource extends BiomeSource {
     public static final MapCodec<PeBiomeSource> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
+        PeModernInputs.CODEC.forGetter(s -> s.inputs),
         RegistryOps.<Biome, PeBiomeSource>getEntryLookupCodec(RegistryKeys.BIOME),
         Codec.BOOL.optionalFieldOf("old", false).forGetter(source -> source.old)
     ).apply(instance, PeBiomeSource::new));
@@ -41,17 +42,24 @@ public final class PeBiomeSource extends BiomeSource {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, int[]> eldest) { return size() > 256; }
     };
 
-    public PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old) {
-        this(biomes,old,2);
+    private final PeModernInputs inputs;
+    private volatile PeModernTerrain modern;
+    PeModernTerrain modernTerrain() { return modern; }
+    private final Map<Long,int[]> peHeights = new LinkedHashMap<>(128,.75f,true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<Long,int[]> entry) {return size()>128;}
+    };
+    public PeBiomeSource(PeModernInputs inputs, RegistryEntryLookup<Biome> biomes, boolean old) {
+        this(inputs,biomes,old,2);
     }
 
-    private PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old, int tileShift) {
+    private PeBiomeSource(PeModernInputs inputs,RegistryEntryLookup<Biome> biomes, boolean old, int tileShift) {
+        this.inputs=inputs;
         this.old = old;
         this.tileShift = tileShift;
         for (var type : PeAlphaClimate.Type.values())
             extra.put(type.path(),biomes.getOrThrow(RegistryKey.of(RegistryKeys.BIOME,Identifier.of("pe_worldgen",type.path()))));
         voidBiome = lookup(biomes, "the_void");
-        for (String name : new String[]{"ocean","frozen_ocean","deep_ocean","warm_ocean","lukewarm_ocean","cold_ocean","deep_lukewarm_ocean","deep_cold_ocean","deep_frozen_ocean","bamboo_jungle"})
+        for (String name : new String[]{"meadow","grove","snowy_slopes","jagged_peaks","frozen_peaks","stony_peaks","lush_caves","dripstone_caves","deep_dark","mangrove_swamp","ocean","frozen_ocean","deep_ocean","warm_ocean","lukewarm_ocean","cold_ocean","deep_lukewarm_ocean","deep_cold_ocean","deep_frozen_ocean","bamboo_jungle"})
             extra.put(name,lookup(biomes,name));
         extra.put("bamboo_jungle_hills",biomes.getOrThrow(RegistryKey.of(RegistryKeys.BIOME, Identifier.of("pe_worldgen","bamboo_jungle_hills"))));
         String[] names = {
@@ -73,10 +81,10 @@ public final class PeBiomeSource extends BiomeSource {
         map(biomes, 165, "eroded_badlands");
     }
 
-    public static PeBiomeSource preview(RegistryEntryLookup<Biome> biomes, long seed, boolean old,
+    public static PeBiomeSource preview(PeModernInputs inputs,RegistryEntryLookup<Biome> biomes, long seed, boolean old,
                                        net.mcpe.worldgen.core.PeRelease release, PeContentSettings settings,
                                        PeBedrockSettings bedrock) {
-        var source = new PeBiomeSource(biomes,old,4);
+        var source = new PeBiomeSource(inputs,biomes,old,4);
         var generator = new PeWorldGenerator(seed,old,true,true,release);
         bedrock.configure(generator,true);
         source.configure(settings.resolve(release,old));
@@ -103,6 +111,8 @@ public final class PeBiomeSource extends BiomeSource {
     void configure(PeContentSettings settings) { options = settings; }
     synchronized void attach(PeWorldGenerator generator,long seed) {
         core = generator;
+        peHeights.clear();
+        modern = java.util.Collections.disjoint(options.flags(),PeModernTerrain.FEATURES) ? null : new PeModernTerrain(inputs,seed,options);
         climate = new PeOceanClimate(seed);
         areas.clear();
         alphaChunks.clear();
@@ -113,11 +123,32 @@ public final class PeBiomeSource extends BiomeSource {
         return Stream.concat(inside, Stream.of(voidBiome));
     }
     @Override public synchronized RegistryEntry<Biome> getBiome(int x, int y, int z, MultiNoiseUtil.MultiNoiseSampler noise) {
+        return biomeAt(x,y,z,false);
+    }
+    public synchronized RegistryEntry<Biome> previewSurface(int x,int z) { return biomeAt(x,16,z,true); }
+    private RegistryEntry<Biome> biomeAt(int x,int y,int z,boolean surfaceOnly) {
         PeWorldGenerator generator = core;
         if (generator == null) return palette.get(1);
         // Moderner Beta PRE rule: apply the out-of-bounds predicate before resolving any PE biome.
         var border = generator.finiteBorder();
         if (border != null && border.outsideBiomeCell(x, z)) return voidBiome;
+        if(modern!=null) {
+            String id=surfaceOnly?null:modern.caveBiome(x,y,z);
+            if(id==null) {
+                id=modern.surfaceBiome(x,z,true);
+                if(id!=null && PeModernTerrain.MOUNTAINS.contains(id) && !options.has(net.mcpe.worldgen.core.PeContent.MOUNTAIN_TERRAIN)) {
+                    int cx=x>>2,cz=z>>2;
+                    long key=((long)cx<<32)|Integer.toUnsignedLong(cz);
+                    int[] heights=peHeights.computeIfAbsent(key,k->{
+                        int[] out=new int[16];var terrain=generator.terrainChunk(cx,cz);
+                        for(int a=0;a<4;a++)for(int b=0;b<4;b++)out[a*4+b]=PeModernTerrain.landHeight(terrain,(4*a+2)*16+4*b+2);
+                        return out;
+                    });
+                    if(heights[(x&3)*4+(z&3)]<78)id=null;
+                }
+            }
+            if(id!=null)return extra.get(id);
+        }
         var alpha = generator.alphaClimate();
         if (alpha != null) {
             int cx = x >> tileShift, cz = z >> tileShift;

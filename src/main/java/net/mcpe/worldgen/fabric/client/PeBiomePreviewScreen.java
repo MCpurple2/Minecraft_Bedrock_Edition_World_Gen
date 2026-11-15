@@ -211,7 +211,7 @@ final class PeBiomePreviewScreen extends Screen {
                             int gx = scaled(x, ox, width, scale), gy = scaled(y, oy, height, scale);
                             long point = samplePoint(gx, gy, zoom, random);
                             int qx = originX + (int) (point >> 32), qz = originZ + (int) point;
-                            var biome = source.getBiome(qx, 16, qz, null);
+                            var biome = source.previewSurface(qx, qz);
                             int color =
                                     grid(
                                             biomeColor(biome, qx, qz),

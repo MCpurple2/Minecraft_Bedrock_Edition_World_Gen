@@ -16,7 +16,7 @@ abstract class PeFeatureRegionMixin {
         var region=(ChunkRegion)(Object)this;
         var world = region.toServerWorld();
         var bounds = net.mcpe.worldgen.fabric.PeOldWorldBorder.bounds(world);
-        if ((world.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator && (pos.getY()<0 || pos.getY()>=128))
+        if ((world.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe && ((pos.getY()<0 && !pe.settings().has(net.mcpe.worldgen.core.PeContent.DEEP_TERRAIN)) || (pos.getY()>=128 && !pe.settings().has(net.mcpe.worldgen.core.PeContent.MOUNTAIN_TERRAIN))))
                 || bounds != null && !bounds.containsPoint(pos.getX(), pos.getZ(), 0))
             result.setReturnValue(false);
     }
