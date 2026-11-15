@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric;
 
+import net.mcpe.worldgen.fabric.PeContentSettings.Aquatic;
+
 import com.mojang.serialization.MapCodec;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -100,7 +102,11 @@ public final class PeNetherChunkGenerator extends ChunkGenerator {
             PeNetherPopulation.decorate(new FabricPopulationWorld(world),random,pos.x,pos.z,structuresEnabled?fortresses:null);
         }
     }
-    @Override public void carve(ChunkRegion region,long seed,NoiseConfig config,BiomeAccess access,StructureAccessor structures,Chunk chunk) {}
+    @Override public void carve(ChunkRegion region,long seed,NoiseConfig config,BiomeAccess access,StructureAccessor structures,Chunk chunk) {
+        var overworld = region.toServerWorld().getServer().getOverworld();
+        if (overworld.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe && pe.settings().enabled(Aquatic.CANYONS))
+            PeAquaticCarvers.carve(seed,chunk,null,false,true);
+    }
     @Override public void setStructureStarts(DynamicRegistryManager registries,StructurePlacementCalculator placement,
         StructureAccessor accessor,Chunk chunk,StructureTemplateManager templates,RegistryKey<World> dimension) {}
     @Override public void populateEntities(ChunkRegion region) {}

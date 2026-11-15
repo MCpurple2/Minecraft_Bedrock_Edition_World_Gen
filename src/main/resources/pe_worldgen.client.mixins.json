@@ -2,6 +2,6 @@
   "required": true,
   "package": "net.mcpe.worldgen.fabric.client.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": ["WorldCreatorMixin"],
+  "client": ["WorldCreatorMixin", "EditBoxAccessor"],
   "injectors": { "defaultRequire": 1 }
 }

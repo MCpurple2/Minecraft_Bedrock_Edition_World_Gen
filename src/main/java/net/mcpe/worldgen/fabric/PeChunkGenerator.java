@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric;
 
+import net.mcpe.worldgen.fabric.PeContentSettings.Aquatic;
+
 import net.mcpe.worldgen.core.PeRelease;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -153,7 +155,13 @@ public final class PeChunkGenerator extends ChunkGenerator {
     }
 
     @Override public void buildSurface(ChunkRegion region, StructureAccessor structures, NoiseConfig noise, Chunk chunk) {}
-    @Override public void carve(ChunkRegion region, long seed, NoiseConfig noise, BiomeAccess access, StructureAccessor structures, Chunk chunk) {}
+    @Override public void carve(ChunkRegion region, long seed, NoiseConfig noise, BiomeAccess access, StructureAccessor structures, Chunk chunk) {
+        boolean caves = settings.enabled(Aquatic.UNDERWATER_CAVE), canyons = settings.enabled(Aquatic.CANYONS);
+        var pos = chunk.getPos();
+        if ((!caves && !canyons) || !engine().isInsideChunk(pos.x,pos.z)) return;
+        int[] biomes = engine().biomeArea(pos.getStartX(),pos.getStartZ(),16,16);
+        PeAquaticCarvers.carve(seed,chunk,biomes,caves,canyons);
+    }
     @Override public void generateFeatures(StructureWorldAccess world, Chunk chunk, StructureAccessor structures) {
         PePopulation current=population;
         if(current==null)throw new IllegalStateException("PE population used before world seed initialization");
@@ -162,17 +170,17 @@ public final class PeChunkGenerator extends ChunkGenerator {
         synchronized (current) {
             current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
             if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
-            if (settings.aquatic() || settings.villages()) super.generateFeatures(world,chunk,structures);
+            if (settings.overworldContent()) super.generateFeatures(world,chunk,structures);
             if (settings.bees()) PeJavaContent.beesAndBerries(world,chunk.getPos(),worldSeed,engine());
         }
     }
     @Override public void populateEntities(ChunkRegion region) {}
     @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {
-        if (settings.aquatic() || settings.villages()) super.addStructureReferences(world,structures,chunk);
+        if (settings.overworldContent()) super.addStructureReferences(world,structures,chunk);
     }
     @Override public void setStructureStarts(DynamicRegistryManager registries, StructurePlacementCalculator placements,
         StructureAccessor structures, Chunk chunk, StructureTemplateManager templates, RegistryKey<World> dimension) {
-        if ((settings.aquatic() || settings.villages()) && engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z))
+        if ((settings.overworldContent()) && engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z))
             super.setStructureStarts(registries,placements,structures,chunk,templates,dimension);
     }
 

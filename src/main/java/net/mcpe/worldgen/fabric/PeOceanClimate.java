@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric;
 
+import net.mcpe.worldgen.fabric.PeContentSettings.Aquatic;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.IntBinaryOperator;
@@ -73,7 +75,7 @@ public final class PeOceanClimate {
     /** Coordinates and coast samples are in Java biome quarts. */
     public String biome(int id,int x,int z,PeContentSettings settings,IntBinaryOperator sample) {
         if(ocean(id)) {
-            if(!settings.aquatic()) return "ocean";
+            if(!settings.enabled(Aquatic.OCEAN_BIOMES)) return "ocean";
             int t=temperature(x,z,6);
             if(Math.abs(t)==2) {
                 for(int dz=-8;dz<=8;dz+=4) for(int dx=-8;dx<=8;dx+=4)

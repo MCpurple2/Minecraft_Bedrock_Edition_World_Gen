@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric;
 
+import net.mcpe.worldgen.fabric.PeContentSettings.Aquatic;
+
 import net.mcpe.worldgen.core.PeRandom;
 import net.mcpe.worldgen.core.PeVillagePlacement;
 import net.minecraft.block.Blocks;
@@ -31,10 +33,12 @@ final class PeJavaContent {
                 var key = feature.getKey().orElse(null);
                 if (key == null || !key.getValue().getNamespace().equals("minecraft")) continue;
                 String id = key.getValue().getPath();
-                boolean marine = id.startsWith("seagrass_") || id.startsWith("kelp_") || id.equals("warm_ocean_vegetation")
-                    || id.equals("sea_pickle");
                 boolean bamboo = id.equals("bamboo") || id.equals("bamboo_light");
-                if (options.aquatic() && marine || options.villages() && bamboo) builder.addFeature(i, feature);
+                if (options.enabled(Aquatic.SEAGRASS) && id.startsWith("seagrass_")
+                    || options.enabled(Aquatic.KELP) && id.startsWith("kelp_")
+                    || options.enabled(Aquatic.SEA_PICKLES) && id.equals("sea_pickle")
+                    || options.enabled(Aquatic.CORAL_REEF) && id.equals("warm_ocean_vegetation")
+                    || options.enabled(Aquatic.ICEBERG) && (id.equals("iceberg_packed") || id.equals("iceberg_blue")) || options.villages() && bamboo) builder.addFeature(i, feature);
             }
         }
         return builder.build();
@@ -45,7 +49,9 @@ final class PeJavaContent {
             var key = entry.registryKey().getValue();
             if (!key.getNamespace().equals("minecraft")) return;
             switch (key.getPath()) {
-                case "shipwrecks", "ocean_ruins", "buried_treasures" -> { if (settings.aquatic()) output.accept(entry); }
+                case "shipwrecks" -> { if (settings.enabled(Aquatic.SHIPWRECK)) output.accept(entry); }
+                case "ocean_ruins" -> { if (settings.enabled(Aquatic.OCEAN_RUINS)) output.accept(entry); }
+                case "buried_treasures" -> { if (settings.enabled(Aquatic.BURIED_TREASURE)) output.accept(entry); }
                 case "pillager_outposts" -> { if (settings.villages()) output.accept(entry); }
                 case "villages" -> {
                     if (settings.villages()) output.accept(RegistryEntry.of(new StructureSet(entry.value().structures(), new VillagePlacement(core))));

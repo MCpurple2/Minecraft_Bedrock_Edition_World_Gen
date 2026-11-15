@@ -1,7 +1,7 @@
 PE Worldgen: experimental PE 0.11.1 research port
 
 The world customization GUI adapts the client-side layout, preset navigation,
-settings actions, and preset list from Moderner Beta. The finite map uses its
+settings actions, JSON settings editor, and preset list from Moderner Beta. The finite map uses its
 WorldBorderLocation tests and out-of-bounds PRE biome injection rule. These adaptations use the upstream MIT version. See LICENSES/Moderner-Beta-MIT.txt.
 The Gradle wrapper launcher is from the Moderner Beta repository (Gradle's
 Apache-2.0-licensed wrapper).
@@ -11,7 +11,7 @@ See the core source and research notes for the actual reconstruction status.
 
 Project license: Apache-2.0 for original contributions. See LICENSE.
 The corresponding project source and Gradle build files for this release are
-distributed in the source archive directory 'source/Build 3.1 IWBUMS/'.
+distributed in the source archive directory 'source/Build 3.2 IWBUMS/'.
 
 Moderner Beta licensing and credits
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/87c015b63e8618795dbeafe41166a3818eb81f8f/README.md#license

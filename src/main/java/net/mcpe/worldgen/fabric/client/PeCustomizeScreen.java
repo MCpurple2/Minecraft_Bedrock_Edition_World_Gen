@@ -99,8 +99,10 @@ public final class PeCustomizeScreen extends Screen {
             var setting = button(Text.literal(i == 0 ? "Setting" : "WIP"), mid - half + 102, y + 24 + i * 24,
                 Math.max(65, half * 2 - 140), () -> client.setScreen(new PeContentScreen(this, old, settings, value -> settings = value)));
             setting.active = i == 0;
-            var advanced = button(Text.literal("…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20, () -> {});
-            advanced.active = false;
+            var advanced = button(Text.literal(i == 0 ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
+                () -> client.setScreen(new PeContentJsonScreen(this, settings, value -> settings = value)));
+            advanced.active = i == 0;
+            if (advanced.active) advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         }
         int actions = y + 100;
         button(label("reset"), mid - half - 5, actions, half, () -> client.setScreen(new ConfirmScreen(answer -> {
