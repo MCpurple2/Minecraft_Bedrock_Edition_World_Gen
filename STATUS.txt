@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 2.5 IWBUMS
+Pocket Edition World Generator · Build 2.6 IWBUMS
 Minecraft Java 1.21.11 · Fabric · PE Alpha 0.11.1 主世界
+
+Build 2.6 修复了 Fabric Loader 0.18.4 搭配 MixinExtras 0.5.0 时 World 在启动阶段转换失败的问题。
 
 Build 2.5 的两级预设列表采用 Moderner Beta 的图文条目，运行时读取 Programmer Art 图标。有限地图按 MB 的边界谓词注入虚空群系，按 PE 地图锚点定位，边缘余量为 0。兼容 C2ME 的群系采样优化。
 
