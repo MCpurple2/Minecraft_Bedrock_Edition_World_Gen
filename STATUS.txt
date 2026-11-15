@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 3.0 IWBUMS
+Pocket Edition World Generator · Build 3.1 IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.1 修正了自定义页的 World Preset 按钮。黄色文字与版本列表中选中的条目一致，例如 0.16.2。
 
 选择世界
 在“世界类型”选择 Pocket Edition Alpha，打开“自定义”→ World Preset → Pocket Edition Alpha，选择无限预设 0.11.1、0.12.3、0.13.2、0.14.3、0.15.10 或 0.16.2。Pocket Edition Alpha Finite 提供 0.11.1 的旧世界。服务端 level-type 可用 pe_worldgen:mcpe_alpha（默认 0.11.1 无限）或 pe_worldgen:pe_0123_infinite、pe_worldgen:pe_0132_infinite、pe_worldgen:pe_0143_infinite、pe_worldgen:pe_01510_infinite、pe_worldgen:pe_0162_infinite。旧存档中省略 pe_version 的区块生成器按 0.11.1 读取。

@@ -125,7 +125,7 @@ public final class PeCustomizeScreen extends Screen {
     }
 
     private Text presetLabel() {
-        return label("preset", Text.literal((old ? FINITE : INFINITE) + " " + release.id()).formatted(Formatting.YELLOW));
+        return label("preset", Text.literal(release.id()).formatted(Formatting.YELLOW));
     }
 
     void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported) {
