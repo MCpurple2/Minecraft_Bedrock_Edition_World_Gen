@@ -38,7 +38,7 @@ public final class PeStrongholdLayout {
         for(Piece p:all)p.box=p.box.move(0,shift,0);
     }
     private Piece collision(Box b){for(Piece p:all)if(p.box.intersects(b))return p;return null;}
-    private static Box oriented(int x,int y,int z,int ox,int oy,int width,int height,int length,int facing){
+    static Box oriented(int x,int y,int z,int ox,int oy,int width,int height,int length,int facing){
         return switch(facing){
             case 1->new Box(x-length+1,y+oy,z+ox,x,y+oy+height-1,z+ox+width-1);
             case 2->new Box(x+ox,y+oy,z-length+1,x+ox+width-1,y+oy+height-1,z);

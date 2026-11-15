@@ -10,11 +10,17 @@ public final class PeLiquidTicks {
     private final PriorityQueue<Tick> pending = new PriorityQueue<>(
         Comparator.comparingInt(Tick::time).thenComparingInt(Tick::order));
     private final PePopulationWorld world;
+    private final boolean nether;
     private final int minX, maxX, minZ, maxZ;
     private int time, order;
 
     public PeLiquidTicks(PePopulationWorld world, int chunkX, int chunkZ) {
+        this(world,chunkX,chunkZ,false);
+    }
+
+    public PeLiquidTicks(PePopulationWorld world, int chunkX, int chunkZ, boolean nether) {
         this.world = world;
+        this.nether = nether;
         minX = (chunkX - 1) * 16;
         maxX = (chunkX + 2) * 16 - 1;
         minZ = (chunkZ - 1) * 16;
@@ -24,7 +30,7 @@ public final class PeLiquidTicks {
     // TileTickingQueue::add checks that the source has chunks at position +/- 8.
     public void schedule(int x, int y, int z, int id, int level) {
         if (x-8 >= minX && x+8 <= maxX && z-8 >= minZ && z+8 <= maxZ)
-            pending.add(new Tick(x,y,z,id,level,time + (id == 8 ? 5 : 30),order++));
+            pending.add(new Tick(x,y,z,id,level,time + (id == 8 ? 5 : nether ? 10 : 30),order++));
     }
 
     public void drain() {
@@ -75,7 +81,7 @@ public final class PeLiquidTicks {
     }
 
     public void tick(int x,int y,int z,int id,int level) {
-        int step = id == 8 ? 1 : 2;
+        int step = id == 8 || nether ? 1 : 2;
         if (level != 0) {
             int minimum=8, sources=0;
             for (int[] side : SIDE) {

@@ -47,6 +47,11 @@ public final class PeBiomes {
     }
 
     PeBiomes(long seed, boolean old, boolean nativeHillsSeeds) {
+        this(seed, old, nativeHillsSeeds, PeRelease.V0_11_1);
+    }
+
+    // Raw and Voronoi layers share the same seed-999 sample vectors across these six ARM releases.
+    PeBiomes(long seed, boolean old, boolean nativeHillsSeeds, PeRelease release) {
         this.seed=Integer.toUnsignedLong((int)seed); this.old=old;
         L land=layer(1,"island",null);
         land=zoom(2000,land,true); land=layer(1,"add",land); land=zoom(2001,land,false);

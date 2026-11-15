@@ -37,8 +37,14 @@ final class LegacyBlocks {
         if(state.isOf(Blocks.PODZOL))return 243;
         if(state.isOf(Blocks.SMOOTH_STONE_SLAB))return state.get(SlabBlock.TYPE)==SlabType.DOUBLE?43:44;
         Integer id=IDS.get(state.getBlock());
-        if(id==null)throw new IllegalArgumentException("No PE mapping for "+state);
-        return id;
+        if(id!=null)return id;
+        // Modern opt-in features and blocks placed by other mods have no numeric PE ID.
+        if(state.isIn(net.minecraft.registry.tag.BlockTags.LEAVES))return 18;
+        if(state.isIn(net.minecraft.registry.tag.BlockTags.LOGS))return 17;
+        var fluid=state.getFluidState();
+        if(fluid.isIn(net.minecraft.registry.tag.FluidTags.WATER))return fluid.isStill()?9:8;
+        if(fluid.isIn(net.minecraft.registry.tag.FluidTags.LAVA))return fluid.isStill()?11:10;
+        return state.isSolidBlock(net.minecraft.world.EmptyBlockView.INSTANCE,net.minecraft.util.math.BlockPos.ORIGIN)?1:0;
     }
     static int data(BlockState state) { return DATA.getOrDefault(state,0); }
     static BlockState state(int id) { return state(id,0); }
@@ -61,6 +67,8 @@ final class LegacyBlocks {
                 Block[] leaves=id==18?new Block[]{Blocks.OAK_LEAVES,Blocks.SPRUCE_LEAVES,Blocks.BIRCH_LEAVES,Blocks.JUNGLE_LEAVES}:new Block[]{Blocks.ACACIA_LEAVES,Blocks.DARK_OAK_LEAVES};
                 return leaves[data&(id==18?3:1)].getDefaultState().with(Properties.PERSISTENT,(data&4)!=0);
             }
+            case 168: return (data==2?Blocks.PRISMARINE_BRICKS:data==1?Blocks.DARK_PRISMARINE:Blocks.PRISMARINE).getDefaultState();
+            case 169: return Blocks.SEA_LANTERN.getDefaultState();
             case 24: return (data==1?Blocks.CHISELED_SANDSTONE:data==2?Blocks.CUT_SANDSTONE:Blocks.SANDSTONE).getDefaultState();
             case 31: return (data==2?Blocks.FERN:data==0?Blocks.DEAD_BUSH:Blocks.SHORT_GRASS).getDefaultState();
             case 38: return new Block[]{Blocks.POPPY,Blocks.BLUE_ORCHID,Blocks.ALLIUM,Blocks.AZURE_BLUET,Blocks.RED_TULIP,Blocks.ORANGE_TULIP,Blocks.WHITE_TULIP,Blocks.PINK_TULIP,Blocks.OXEYE_DAISY}[Math.min(data,8)].getDefaultState();
@@ -70,15 +78,15 @@ final class LegacyBlocks {
             case 50:
                 if(data>=1&&data<=4)return Blocks.WALL_TORCH.getDefaultState().with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.EAST,Direction.WEST,Direction.SOUTH,Direction.NORTH}[data-1]);
                 return Blocks.TORCH.getDefaultState();
-            case 53,67,109,128,134,135,136,163,164:
+            case 53,67,109,114,128,134,135,136,163,164:
                 return base(id).with(StairsBlock.FACING,new Direction[]{Direction.EAST,Direction.WEST,Direction.SOUTH,Direction.NORTH}[data&3]).with(StairsBlock.HALF,(data&4)!=0?BlockHalf.TOP:BlockHalf.BOTTOM);
             case 54:
                 return Blocks.CHEST.getDefaultState().with(Properties.HORIZONTAL_FACING,data==2?Direction.NORTH:data==3?Direction.SOUTH:data==4?Direction.WEST:Direction.EAST);
             case 59: return Blocks.WHEAT.getDefaultState().with(Properties.AGE_7,data&7);
             case 60: return Blocks.FARMLAND.getDefaultState().with(Properties.MOISTURE,data&7);
             case 61,62: return Blocks.FURNACE.getDefaultState().with(Properties.HORIZONTAL_FACING,data==2?Direction.NORTH:data==3?Direction.SOUTH:data==4?Direction.WEST:Direction.EAST).with(Properties.LIT,id==62);
-            case 64,71:
-                return (id==64?Blocks.OAK_DOOR:Blocks.IRON_DOOR).getDefaultState()
+            case 64,71,193,196:
+                return (switch(id){case 71->Blocks.IRON_DOOR;case 193->Blocks.SPRUCE_DOOR;case 196->Blocks.ACACIA_DOOR;default->Blocks.OAK_DOOR;}).getDefaultState()
                     .with(DoorBlock.HALF,(data&8)!=0?DoubleBlockHalf.UPPER:DoubleBlockHalf.LOWER)
                     .with(DoorBlock.FACING,(data&8)==0?new Direction[]{Direction.EAST,Direction.SOUTH,Direction.WEST,Direction.NORTH}[data&3]:Direction.NORTH)
                     .with(DoorBlock.OPEN,(data&8)==0&&(data&4)!=0)
@@ -105,6 +113,28 @@ final class LegacyBlocks {
             case 127:
                 return Blocks.COCOA.getDefaultState().with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.SOUTH,Direction.WEST,Direction.NORTH,Direction.EAST}[data&3]).with(Properties.AGE_2,Math.min(data>>2,2));
             case 120: return Blocks.END_PORTAL_FRAME.getDefaultState().with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.SOUTH,Direction.WEST,Direction.NORTH,Direction.EAST}[data&3]).with(Properties.EYE,(data&4)!=0);
+            case 23,29: {
+                Direction[] facing={Direction.DOWN,Direction.UP,Direction.NORTH,Direction.SOUTH,Direction.WEST,Direction.EAST};
+                return (id==23?Blocks.DISPENSER:Blocks.STICKY_PISTON).getDefaultState()
+                    .with(Properties.FACING,facing[Math.min(data&7,5)]);
+            }
+            case 46: return Blocks.TNT.getDefaultState();
+            case 55: return Blocks.REDSTONE_WIRE.getDefaultState();
+            case 69: return Blocks.LEVER.getDefaultState().with(Properties.BLOCK_FACE,net.minecraft.block.enums.BlockFace.WALL)
+                .with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.NORTH,Direction.EAST,Direction.WEST,Direction.SOUTH}[data&3]);
+            case 70: return Blocks.STONE_PRESSURE_PLATE.getDefaultState();
+            case 93: return Blocks.REPEATER.getDefaultState().with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.SOUTH,Direction.WEST,Direction.NORTH,Direction.EAST}[data&3]);
+            case 118: return Blocks.CAULDRON.getDefaultState();
+            case 131: return Blocks.TRIPWIRE_HOOK.getDefaultState().with(Properties.HORIZONTAL_FACING,new Direction[]{Direction.SOUTH,Direction.WEST,Direction.NORTH,Direction.EAST}[data&3]).with(Properties.ATTACHED,(data&4)!=0);
+            case 132: return Blocks.TRIPWIRE.getDefaultState().with(Properties.ATTACHED,(data&4)!=0);
+            case 140: return Blocks.POTTED_RED_MUSHROOM.getDefaultState();
+            case 159: return switch (data) {
+                case 0 -> Blocks.WHITE_TERRACOTTA.getDefaultState(); case 4 -> Blocks.YELLOW_TERRACOTTA.getDefaultState();
+                case 8 -> Blocks.LIGHT_GRAY_TERRACOTTA.getDefaultState(); case 11 -> Blocks.BLUE_TERRACOTTA.getDefaultState();
+                case 12 -> Blocks.BROWN_TERRACOTTA.getDefaultState(); case 14 -> Blocks.RED_TERRACOTTA.getDefaultState();
+                default -> Blocks.ORANGE_TERRACOTTA.getDefaultState();
+            };
+            case 172: return Blocks.TERRACOTTA.getDefaultState();
             case 141: return Blocks.CARROTS.getDefaultState().with(Properties.AGE_7,data&7);
             case 142: return Blocks.POTATOES.getDefaultState().with(Properties.AGE_7,data&7);
             case 171: return (data==12?Blocks.BROWN_CARPET:Blocks.WHITE_CARPET).getDefaultState();
@@ -173,6 +203,8 @@ final class LegacyBlocks {
             case 82 -> Blocks.CLAY.getDefaultState();
             case 83 -> Blocks.SUGAR_CANE.getDefaultState();
             case 87 -> Blocks.NETHERRACK.getDefaultState();
+            case 88 -> Blocks.SOUL_SAND.getDefaultState();
+            case 153 -> Blocks.NETHER_QUARTZ_ORE.getDefaultState();
             case 89 -> Blocks.GLOWSTONE.getDefaultState();
             case 85 -> Blocks.OAK_FENCE.getDefaultState();
             case 86 -> Blocks.CARVED_PUMPKIN.getDefaultState();
@@ -191,6 +223,10 @@ final class LegacyBlocks {
             case 109 -> Blocks.STONE_BRICK_STAIRS.getDefaultState();
             case 110 -> Blocks.MYCELIUM.getDefaultState();
             case 111 -> Blocks.LILY_PAD.getDefaultState();
+            case 112 -> Blocks.NETHER_BRICKS.getDefaultState();
+            case 113 -> Blocks.NETHER_BRICK_FENCE.getDefaultState();
+            case 114 -> Blocks.NETHER_BRICK_STAIRS.getDefaultState();
+            case 115 -> Blocks.NETHER_WART.getDefaultState();
             case 120 -> Blocks.END_PORTAL_FRAME.getDefaultState();
             case 125 -> Blocks.OAK_PLANKS.getDefaultState();
             case 126 -> Blocks.OAK_SLAB.getDefaultState();
@@ -216,3 +252,4 @@ final class LegacyBlocks {
         };
     }
 }
+

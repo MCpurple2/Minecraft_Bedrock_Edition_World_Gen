@@ -23,6 +23,7 @@ public final class PeWorldgenMod implements ModInitializer {
             if (bounds != null && ServerPlayNetworking.canSend(handler, PeFiniteBounds.ID)) sender.sendPacket(bounds);
         });
         Registry.register(Registries.CHUNK_GENERATOR, Identifier.of("pe_worldgen", "pe_0111"), PeChunkGenerator.CODEC);
+        Registry.register(Registries.CHUNK_GENERATOR, Identifier.of("pe_worldgen", "pe_012_nether"), PeNetherChunkGenerator.CODEC);
         Registry.register(Registries.BIOME_SOURCE, Identifier.of("pe_worldgen", "pe_0111"), PeBiomeSource.CODEC);
     }
 }

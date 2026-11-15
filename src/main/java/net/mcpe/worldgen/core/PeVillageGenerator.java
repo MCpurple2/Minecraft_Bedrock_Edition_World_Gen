@@ -17,6 +17,7 @@ public final class PeVillageGenerator {
     private static final int[] BUCKET_COUNTS={11,23,47,97,199,409,823,1741,3739,7517,15173,30727,62233,126271,256279,520241,1056323};
     private final long worldSeed;
     private final PeBiomes biomes;
+    private final PeRelease release;
     private final String prefix;
     private final ArrayList<Start> order=new ArrayList<>();
     private final ArrayList<Long> discovery=new ArrayList<>();
@@ -31,10 +32,10 @@ public final class PeVillageGenerator {
     }
     public PeVillageGenerator(long seed){this(seed,false);}
     public PeVillageGenerator(long seed,boolean old) {
-        this(seed, old, new PeBiomes(seed, old));
+        this(seed, old, new PeBiomes(seed, old), PeRelease.V0_11_1);
     }
-    PeVillageGenerator(long seed, boolean old, PeBiomes biomes) {
-        worldSeed=Integer.toUnsignedLong((int)seed);this.biomes=biomes;
+    PeVillageGenerator(long seed, boolean old, PeBiomes biomes, PeRelease release) {
+        worldSeed=Integer.toUnsignedLong((int)seed);this.biomes=biomes;this.release=release;
         prefix="pe0111:village:v1:"+Long.toUnsignedString(worldSeed)+":"+(old?"old":"infinite")+":";
     }
     /** Caller supplies the native postProcess RNG; painting advances it. */
@@ -51,7 +52,7 @@ public final class PeVillageGenerator {
             if(discovery.contains(key))continue;
             if(!PeVillagePlacement.isFeatureChunk(worldSeed,x,z,1,layoutRandom))continue;
             int rawBiome=biomes.rawArea((x*16+8)>>2,(z*16+8)>>2,1,1)[0];
-            if(!PeVillagePlacement.isAllowedBiome(rawBiome))continue;
+            if(!PeVillagePlacement.isAllowedBiome(rawBiome,release))continue;
             Start start=makeStart(x,z,layoutRandom);
             String saved=world.loadVillageState(prefix+key);
             if(saved!=null)restore(start,saved);
@@ -76,7 +77,8 @@ public final class PeVillageGenerator {
     }
     private Start makeStart(int x,int z,PeRandom r) {
         int biome=biomes.biomeAt(x*16+2,z*16+2);
-        return new Start(x,z,PeVillageLayout.create(r,x,z,0,biome==2||biome==17));
+        var style=PeVillageLayout.Style.fromBiome(biome,release);
+        return new Start(x,z,PeVillageLayout.create(r,x,z,0,style));
     }
     private void initialize(PePopulationWorld world) {
         if(initialized)return;

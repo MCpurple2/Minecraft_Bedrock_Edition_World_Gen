@@ -9,18 +9,27 @@ import java.util.HashMap;
 public final class PePopulation {
     private final long seed;
     private final boolean old;
+    private final boolean replaceVillages;
     private final PeWorldGenerator core;
     private final PeVillageGenerator villages;
+    private final PeScatteredStructures scattered;
+    private final PeOceanMonuments monuments;
     private final PeMineshafts mineshafts;
     private final PeStrongholds strongholds;
     // Native BiomeDecorator fields are mutable. Keep them per generator/world,
     // never static across Java dimensions, seeds or newly opened worlds.
     private final Map<Integer,PeDecorationSettings> biomeSettings=new HashMap<>();
     public PePopulation(long seed,boolean old,PeWorldGenerator core) {
+        this(seed,old,core,false);
+    }
+    public PePopulation(long seed,boolean old,PeWorldGenerator core,boolean replaceVillages) {
+        this.replaceVillages = replaceVillages;
         this.seed=seed;this.old=old;this.core=core;
-        villages=new PeVillageGenerator(seed,old,core.biomes());
+        villages=new PeVillageGenerator(seed,old,core.biomes(),core.release());
+        monuments=core.release()==PeRelease.V0_16_2 && !old ? new PeOceanMonuments(seed,core.biomes()) : null;
+        scattered=new PeScatteredStructures(seed,core.release());
         mineshafts=new PeMineshafts(seed);
-        strongholds=new PeStrongholds(seed,core.biomes());
+        strongholds=new PeStrongholds(seed,core.biomes(),core.release());
     }
     /** Native explicitly resets to this seed before structures and again before biome decoration. */
     public static int seed(long worldSeed,int chunkX,int chunkZ) {
@@ -34,19 +43,22 @@ public final class PePopulation {
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);
-        // This models postProcess immediately following loadChunk on the same native TLS.
-        // PE's actual thread scheduling can leave a different preceding chunk's RNG here.
-        lakes(world,core.lakeRandom(cx,cz),biome,bx,bz);
-        PeRandom random=new PeRandom(Integer.toUnsignedLong(seed(seed,cx,cz)));
+        int chunkSeed=seed(seed,cx,cz);
+        boolean later=core.release()!=PeRelease.V0_11_1;
+        PeRandom random=new PeRandom(chunkSeed);
+        // 0.12 reseeds before lakes. 0.11 inherits the preceding native TLS terrain RNG.
+        lakes(world,later?random:core.lakeRandom(cx,cz),biome,bx,bz);
+        if(later)random.setSeed(chunkSeed);
         if(structures) {
-            villages.generate(world,random,cx,cz);
-            if(!old){mineshafts.populate(world,random,cx,cz);strongholds.populate(world,random,cx,cz);}
+            if (!replaceVillages) villages.generate(world,random,cx,cz);
+            if(!old){mineshafts.populate(world,random,cx,cz);strongholds.populate(world,random,cx,cz); scattered.populate(world,random,cx,cz); if (monuments!=null) monuments.populate(world,random,cx,cz);}
         }
         if(!old)for(int i=0;i<8;i++) {
             int x=bx+8+(random.nextRawInt()&15),y=random.nextRawInt()&127,z=bz+8+(random.nextRawInt()&15);
             PeSmallStructures.dungeon(world,random,x,y,z);
         }
-        random.setSeed(Integer.toUnsignedLong(seed(seed,cx,cz)));
+        if(later)PeSnow.freeze(world,bx,bz);
+        random.setSeed(chunkSeed);
         PeDecorationSettings settings=biomeSettings.computeIfAbsent(biome,PeDecorationSettings::fromBiome);
         PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings);
         PeOres.decorate(world,random,bx,bz);
@@ -65,7 +77,9 @@ public final class PePopulation {
             } else count=(int)settings.treeDensity+Math.max(random.nextInt(10)-7,0);
             for(int i=0;i<count;i++) {
                 PeTrees.Selected tree=PeTrees.select(random,biome);
-                int x=bx+1+random.nextInt(14),z=bz+1+random.nextInt(14),y=world.surfaceY(x,z);
+                int first=random.nextInt(14)+1,second=random.nextInt(14)+1;
+                boolean zFirst=core.release().compareTo(PeRelease.V0_15_10)>=0;
+                int x=bx+(zFirst?second:first),z=bz+(zFirst?first:second),y=world.surfaceY(x,z);
                 tree.place(world,random,x,y,z);
                 if(!old)grassAroundTree(world,random,x,y,z,23);
             }
@@ -76,7 +90,7 @@ public final class PePopulation {
         finally{settings.grass=configuredGrass;}
         PeSprings.decorate(world,random,bx,bz);
         PeBiomePopulation.postDecorate(world,random,biome,bx,bz,old);
-        PeSnow.apply(world,bx,bz);
+        if(later)PeSnow.cover(world,bx,bz);else PeSnow.apply(world,bx,bz);
         world.finishLiquidTicks(cx,cz);
     }
     private void lakes(PePopulationWorld w,PeRandom r,int biome,int bx,int bz) {
@@ -100,3 +114,4 @@ public final class PePopulation {
         }
     }
 }
+

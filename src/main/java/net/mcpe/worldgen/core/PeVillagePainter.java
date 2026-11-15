@@ -83,7 +83,8 @@ public final class PeVillagePainter {
                 int y=top(x,z,true)-1;
                 if(y<0)continue;
                 boolean bridge=liquid(world.getBlock(x,y,z));
-                world.setBlock(x,y,z,piece.desert?24:bridge?5:198,piece.desert&&bridge?2:0);
+                int bridgeMeta=switch(piece.style){case ACACIA->4;case SPRUCE->1;case DESERT->2;default->0;};
+                world.setBlock(x,y,z,piece.desert?24:bridge?5:198,bridge?bridgeMeta:0);
             }
     }
 
@@ -119,9 +120,17 @@ public final class PeVillagePainter {
         if(!clip.contains(wx,wy,wz) || !world.isInside(wx,wy,wz))return;
         if (piece.desert) {
             switch(id) {
-                case 4,17,162,198 -> { id=24;meta=0; }
+                case 4,17,48,162,198 -> { id=24;meta=0; }
                 case 5 -> { id=24;meta=2; }
                 case 53,67 -> id=128;
+            }
+        } else if (piece.style == PeVillageLayout.Style.ACACIA || piece.style == PeVillageLayout.Style.SPRUCE) {
+            boolean acacia = piece.style == PeVillageLayout.Style.ACACIA;
+            switch (id) {
+                case 17,162 -> {id=acacia?162:17;meta=acacia?0:1;}
+                case 5,85 -> meta=acacia?4:1;
+                case 53 -> id=acacia?163:134;
+                case 64 -> id=acacia?196:193;
             }
         }
         boolean source = (id==8 || id==10) && meta==0;

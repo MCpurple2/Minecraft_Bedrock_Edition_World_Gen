@@ -4,6 +4,7 @@ import net.mcpe.worldgen.core.PePopulationWorld;
 import net.mcpe.worldgen.core.PeLiquidTicks;
 import net.mcpe.worldgen.core.PeSprings;
 import net.mcpe.worldgen.core.PeRandom;
+import net.mcpe.worldgen.core.PeRelease;
 import net.mcpe.worldgen.core.PeWorldGenerator;
 import net.mcpe.worldgen.core.PeSurfacePatches;
 import net.minecraft.world.StructureWorldAccess;
@@ -15,6 +16,7 @@ import net.minecraft.block.DoorBlock;
 import net.minecraft.block.enums.DoubleBlockHalf;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
+import net.minecraft.block.entity.DispenserBlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.Item;
@@ -38,7 +40,14 @@ final class FabricPopulationWorld implements PePopulationWorld {
     private final Map<Long,int[]> biomeAreas=new HashMap<>();
     private final Map<Long,Integer> columnHeights=new HashMap<>();
     FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core){this.world=world;this.core=core;}
-    @Override public void beginLiquidTicks(int cx,int cz){liquids=new PeLiquidTicks(this,cx,cz);}
+    /** Nether uses the PE 0.12 engine and a single fixed biome. */
+    FabricPopulationWorld(StructureWorldAccess world){this.world=world;this.core=null;}
+    @Override public PeRelease release(){return core==null?PeRelease.V0_12_3:core.release();}
+    @Override public void populateMonumentRooms(int x, int z, int direction, int rotationSeed, PeRandom random,
+                                               int chunkX, int chunkZ) {
+        FabricMonumentRooms.populate(world, x, z, direction, rotationSeed, random, chunkX, chunkZ);
+    }
+    @Override public void beginLiquidTicks(int cx,int cz){liquids=new PeLiquidTicks(this,cx,cz,core==null);}
     @Override public void finishLiquidTicks(int cx,int cz){liquids.drain();}
     @Override public void scheduleLiquidTick(int x,int y,int z,int id,int level){liquids.schedule(x,y,z,id,level);}
     @Override public void tickStructureLiquid(int x,int y,int z,int id){
@@ -46,7 +55,7 @@ final class FabricPopulationWorld implements PePopulationWorld {
         if(id==10)PeSprings.spreadFire(this,new PeRandom(0x88f9fa*x+0xef88b*y+z),x,y,z);
         liquids.tick(x,y,z,id,0);
     }
-    @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&core.isInsideChunk(x >> 4, z >> 4);}
+    @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&(core==null||core.isInsideChunk(x >> 4, z >> 4));}
     @Override public int getBlock(int x,int y,int z){
         if(y<0||y>=128)return 0;
         if(!isInside(x,y,z))return 0;
@@ -61,7 +70,7 @@ final class FabricPopulationWorld implements PePopulationWorld {
         BlockPos pos=new BlockPos(x,y,z);
         if(id==175&&(data&8)!=0)data=world.getBlockState(pos.down()).contains(Properties.DOUBLE_BLOCK_HALF)?LegacyBlocks.data(world.getBlockState(pos.down()))|8:data;
         BlockState state=LegacyBlocks.state(id,data);
-        if(id==64||id==71){
+        if(id==64||id==71||id==193||id==196){
             if((data&8)!=0){
                 BlockState lower=world.getBlockState(pos.down());
                 if(lower.getBlock()==state.getBlock()){
@@ -78,7 +87,7 @@ final class FabricPopulationWorld implements PePopulationWorld {
             if (!blocks && y == height - 1) columnHeights.remove(column);
             else if (blocks && y >= height) columnHeights.put(column, y + 1);
         }
-        if(id==53||id==67||id==109||id==128||id==134||id==135||id==136||id==163||id==164||id==85||id==101||id==102||id==139)
+        if(id==53||id==67||id==109||id==113||id==114||id==128||id==134||id==135||id==136||id==163||id==164||id==85||id==101||id==102||id==139||id==55||id==131||id==132)
             world.getChunk(x>>4,z>>4).markBlockForPostProcessing(pos);
     }
     private static long columnKey(int x,int z){return ((long)x<<32)|(z&0xffffffffL);}
@@ -94,6 +103,7 @@ final class FabricPopulationWorld implements PePopulationWorld {
         columnHeights.put(key,height);return height;
     }
     @Override public int biomeAt(int x,int z){
+        if(core==null)return 8;
         int cx=x>>4,cz=z>>4;
         int[] area=biomeAreas.computeIfAbsent(columnKey(cx,cz),ignored->core.biomeArea(cx<<4,cz<<4,16,16));
         return area[(x&15)+(z&15)*16];
@@ -113,7 +123,8 @@ final class FabricPopulationWorld implements PePopulationWorld {
         BlockPos pos=new BlockPos(x,y,z);
         BlockEntity entity=world.getBlockEntity(pos);
         if(entity==null){
-            entity=new ChestBlockEntity(pos,world.getBlockState(pos));
+            var state=world.getBlockState(pos);
+            entity=state.isOf(net.minecraft.block.Blocks.DISPENSER) ? new DispenserBlockEntity(pos,state) : new ChestBlockEntity(pos,state);
             world.getChunk(x>>4,z>>4).setBlockEntity(entity);
         }
         if(!(entity instanceof Inventory inventory))throw new IllegalStateException("Chest inventory missing at "+pos);
@@ -126,10 +137,22 @@ final class FabricPopulationWorld implements PePopulationWorld {
         BlockEntity entity=world.getBlockEntity(pos);
         if(entity==null){entity=new MobSpawnerBlockEntity(pos,world.getBlockState(pos));world.getChunk(x>>4,z>>4).setBlockEntity(entity);}
         if(!(entity instanceof MobSpawnerBlockEntity spawner))throw new IllegalStateException("Spawner missing at "+pos);
-        spawner.setEntityType(switch(legacyMobId){case 32->EntityType.ZOMBIE;case 34->EntityType.SKELETON;case 35->EntityType.SPIDER;case 39->EntityType.SILVERFISH;case 40->EntityType.CAVE_SPIDER;default->throw new IllegalArgumentException("Unknown PE mob "+legacyMobId);},world.getRandom());
+        spawner.setEntityType(switch(legacyMobId){case 32->EntityType.ZOMBIE;case 34->EntityType.SKELETON;case 35->EntityType.SPIDER;case 39->EntityType.SILVERFISH;case 40->EntityType.CAVE_SPIDER;case 43->EntityType.BLAZE;default->throw new IllegalArgumentException("Unknown PE mob "+legacyMobId);},world.getRandom());
         spawner.markDirty();
     }
     @Override public void spawnVillager(int x,int y,int z,int profession){spawnVillager(x,y,z,profession,"position:"+x+":"+y+":"+z);}
+    @Override public void spawnHutWitch(int x,int y,int z){
+        if(!isInside(x,y,z))return;
+        String key="pe_worldgen:hut:"+world.toServerWorld().getRegistryKey().getValue()+":"+x+":"+z;
+        UUID uuid=UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8));
+        if(loadVillageState(key)!=null || world.toServerWorld().getEntity(uuid)!=null)return;
+        var witch=EntityType.WITCH.create(world.toServerWorld(),SpawnReason.STRUCTURE);
+        if(witch==null)return;
+        witch.setUuid(uuid);
+        witch.refreshPositionAndAngles(x,y,z,0,0);
+        witch.setPersistent();
+        if(world.spawnEntity(witch))saveVillageState(key,"1");
+    }
     public void spawnVillager(int x,int y,int z,int profession,String key){
         if(!isInside(x,y,z))return;
         UUID uuid=UUID.nameUUIDFromBytes(("pe_worldgen:"+world.toServerWorld().getRegistryKey().getValue()+":"+key).getBytes(StandardCharsets.UTF_8));
@@ -156,6 +179,10 @@ final class FabricPopulationWorld implements PePopulationWorld {
         case 306->Items.IRON_HELMET;case 308->Items.IRON_LEGGINGS;case 309->Items.IRON_BOOTS;case 49->Items.OBSIDIAN;
         case 6->Items.OAK_SAPLING;case 351->Items.INK_SAC;case 329->Items.SADDLE;
         case 340->Items.BOOK;case 339->Items.PAPER;
+        case 264->Items.DIAMOND;case 352->Items.BONE;case 367->Items.ROTTEN_FLESH;case 262->Items.ARROW;
+        case 417->Items.IRON_HORSE_ARMOR;case 418->Items.GOLDEN_HORSE_ARMOR;case 419->Items.DIAMOND_HORSE_ARMOR;
+        case 283->Items.GOLDEN_SWORD;case 315->Items.GOLDEN_CHESTPLATE;case 259->Items.FLINT_AND_STEEL;case 372->Items.NETHER_WART;
+        case 403->Items.ENCHANTED_BOOK;
         default->throw new IllegalArgumentException("Unmapped PE inventory item "+id);
     };}
 }

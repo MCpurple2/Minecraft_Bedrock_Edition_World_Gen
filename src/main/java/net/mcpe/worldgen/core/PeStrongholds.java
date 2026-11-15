@@ -13,6 +13,7 @@ public final class PeStrongholds {
     private static final Pattern NUMBER=Pattern.compile("-?\\d+");
     private final long seed;
     private final PeBiomes biomes;
+    private final PeRelease release;
     private final int multiplierX,multiplierZ;
     private final String prefix;
     private int[][] positions;
@@ -26,14 +27,14 @@ public final class PeStrongholds {
         boolean intersects(Box clip){for(var p:layout.pieces())if(p.box.intersects(clip))return true;return false;}
     }
     public PeStrongholds(long worldSeed) {
-        this(worldSeed, new PeBiomes(worldSeed, false));
+        this(worldSeed, new PeBiomes(worldSeed, false),PeRelease.V0_11_1);
     }
-    PeStrongholds(long worldSeed, PeBiomes biomes) {
-        seed=Integer.toUnsignedLong((int)worldSeed);this.biomes=biomes;
+    PeStrongholds(long worldSeed, PeBiomes biomes, PeRelease release) {
+        seed=Integer.toUnsignedLong((int)worldSeed);this.biomes=biomes;this.release=release;
         PeRandom r=new PeRandom(seed);multiplierX=(r.nextRawInt()>>>2)*2+1;multiplierZ=(r.nextRawInt()>>>2)*2+1;
         prefix="pe0111:stronghold:v1:"+Long.toUnsignedString(seed)+":";
     }
-    private boolean allowedRaw(int x,int z){return PeVillagePlacement.isAllowedBiome(biomes.rawArea(x,z,1,1)[0]);}
+    private boolean allowedRaw(int x,int z){return PeVillagePlacement.isAllowedBiome(biomes.rawArea(x,z,1,1)[0],release);}
     private int[][] findPositions(PeRandom r){return PeStrongholdPositions.find(seed,r,this::allowedRaw);}
 
     public synchronized void populate(PePopulationWorld world,PeRandom populationRandom,int cx,int cz) {

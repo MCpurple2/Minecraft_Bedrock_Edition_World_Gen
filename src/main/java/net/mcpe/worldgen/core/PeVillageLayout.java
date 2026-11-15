@@ -7,6 +7,18 @@ import java.util.List;
  * Constructor decisions and random-consumption order are kept separate from
  * terrain-dependent block painting. Coordinates/bounds are inclusive. */
 public final class PeVillageLayout {
+    public enum Style {
+        OAK, DESERT, ACACIA, SPRUCE;
+        static Style fromBiome(int biome, PeRelease release) {
+            if (biome == 2 || biome == 17) return DESERT;
+            if (release.compareTo(PeRelease.V0_15_10) < 0) return OAK;
+            return switch (biome) {
+                case 35, 36, 163, 164 -> ACACIA;
+                case 5, 12, 30, 31, 158 -> SPRUCE;
+                default -> OAK;
+            };
+        }
+    }
     public enum Type {
         START, ROAD, SIMPLE_HOUSE, SMALL_TEMPLE, BOOK_HOUSE, SMALL_HUT, PIG_HOUSE,
         DOUBLE_FARMLAND, FARMLAND, SMITHY, TWO_ROOM_HOUSE, LIGHT_POST
@@ -30,13 +42,14 @@ public final class PeVillageLayout {
         public Box box;
         public final int orientation,depth;
         public final boolean desert;
+        public final Style style;
         public final int variant,hutStyle;
         public final int[] crops;
         public int groundY=-1,villagersSpawned=0;
         public boolean chestCreated=false;
 
-        private Piece(Type type,Box box,int orientation,int depth,boolean desert,int variant,int hutStyle,int[] crops) {
-            this.type=type;this.box=box;this.orientation=orientation;this.depth=depth;this.desert=desert;
+        private Piece(Type type,Box box,int orientation,int depth,Style style,int variant,int hutStyle,int[] crops) {
+            this.type=type;this.box=box;this.orientation=orientation;this.depth=depth;this.style=style;this.desert=style==Style.DESERT;
             this.variant=variant;this.hutStyle=hutStyle;this.crops=crops;
         }
         public int worldX(int x,int z) {
@@ -57,15 +70,18 @@ public final class PeVillageLayout {
     private final ArrayList<Weight> weights=new ArrayList<>();
     private final PeRandom random;
     private final int size;
-    private final boolean desert;
+    private final Style style;
     private Piece start;
     private Type previous;
 
-    private PeVillageLayout(PeRandom random,int size,boolean desert) {this.random=random;this.size=size;this.desert=desert;}
+    private PeVillageLayout(PeRandom random,int size,Style style) {this.random=random;this.size=size;this.style=style;}
     public List<Piece> pieces(){return List.copyOf(all);}
 
     public static PeVillageLayout create(PeRandom random,int chunkX,int chunkZ,int size,boolean desert) {
-        PeVillageLayout v=new PeVillageLayout(random,size,desert);
+        return create(random,chunkX,chunkZ,size,desert ? Style.DESERT : Style.OAK);
+    }
+    static PeVillageLayout create(PeRandom random,int chunkX,int chunkZ,int size,Style style) {
+        PeVillageLayout v=new PeVillageLayout(random,size,style);
         v.initialize(chunkX,chunkZ);
         return v;
     }
@@ -86,7 +102,7 @@ public final class PeVillageLayout {
         weight(Type.SMITHY,15,0,size+1);
         weight(Type.TWO_ROOM_HOUSE,8,size,(size+2)*2-1);
         int x=chunkX*16+2,z=chunkZ*16+2;
-        start=new Piece(Type.START,new Box(x,64,z,x+5,78,z+5),random.nextInt(4),0,desert,0,0,new int[0]);
+        start=new Piece(Type.START,new Box(x,64,z,x+5,78,z+5),random.nextInt(4),0,style,0,0,new int[0]);
         all.add(start);
         addRoad(x-1,74,z+1,1,0);
         addRoad(x+6,74,z+1,3,0);
@@ -118,7 +134,7 @@ public final class PeVillageLayout {
             Box box=oriented(x,y,z,3,3,length,orientation);
             if(collision(box))continue;
             if(box.minY<=10)return null;
-            Piece p=new Piece(Type.ROAD,box,orientation,depth,desert,0,0,new int[0]);
+            Piece p=new Piece(Type.ROAD,box,orientation,depth,style,0,0,new int[0]);
             all.add(p);roads.add(p);return p;
         }
         return null;
@@ -172,7 +188,7 @@ public final class PeVillageLayout {
             crops=new int[type==Type.FARMLAND?2:4];
             for(int i=0;i<crops.length;i++)crops[i]=switch(random.nextInt(5)){case 0->141;case 1->142;default->59;};
         }
-        return new Piece(type,box,orientation,depth,desert,variant,hutStyle,crops);
+        return new Piece(type,box,orientation,depth,style,variant,hutStyle,crops);
     }
 
     private Piece sideHouse(Piece road,int offset,boolean right) {

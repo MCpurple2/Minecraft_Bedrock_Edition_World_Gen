@@ -6,6 +6,8 @@ import net.minecraft.client.gui.screen.world.WorldCreator;
 import net.minecraft.client.world.GeneratorOptionsHolder;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
+import java.util.Arrays;
+import net.mcpe.worldgen.core.PeRelease;
 import java.util.List;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -41,10 +43,8 @@ public abstract class WorldCreatorMixin {
         preset.getKey().ifPresent(key -> {
             var id = key.getValue();
             // Keep the old preset IDs editable when recreating a previous world.
-            if (id.getNamespace().equals("pe_worldgen") && switch (id.getPath()) {
-                case "mcpe_alpha", "pe_0111_infinite", "pe_0111_old" -> true;
-                default -> false;
-            }) result.setReturnValue(PeCustomizeScreen::new);
+            if (id.getNamespace().equals("pe_worldgen") && (id.getPath().equals("mcpe_alpha") || id.getPath().equals(PeRelease.V0_11_1.presetPath(true))
+                || Arrays.stream(PeRelease.values()).anyMatch(release -> id.getPath().equals(release.presetPath(false))))) result.setReturnValue(PeCustomizeScreen::new);
         });
     }
 }

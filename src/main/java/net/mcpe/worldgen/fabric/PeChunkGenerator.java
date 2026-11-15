@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.fabric;
 
+import net.mcpe.worldgen.core.PeRelease;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -35,22 +37,29 @@ import java.util.Map;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-/** Fabric adapter only: Java worldgen never supplies noise, caves or decoration. */
+/** Adapts PE terrain and population to Fabric, with optional vanilla content overlays. */
 public final class PeChunkGenerator extends ChunkGenerator {
+    private static final Codec<PeRelease> RELEASE_CODEC = Codec.STRING.comapFlatMap(
+        id -> PeRelease.byId(id).map(DataResult::success).orElseGet(() -> DataResult.error(() -> "Unknown PE release: " + id)),
+        PeRelease::id);
     public static final MapCodec<PeChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         BiomeSource.CODEC.fieldOf("biome_source").forGetter(PeChunkGenerator::getBiomeSource),
         Codec.BOOL.optionalFieldOf("old", false).forGetter(generator -> generator.old),
         Codec.BOOL.optionalFieldOf("pe_spawn", false).forGetter(PeChunkGenerator::usesPeSpawn),
-        Codec.BOOL.optionalFieldOf("native_biome_seeds", false).forGetter(generator -> generator.nativeBiomeSeeds)
+        Codec.BOOL.optionalFieldOf("native_biome_seeds", false).forGetter(generator -> generator.nativeBiomeSeeds),
+        RELEASE_CODEC.optionalFieldOf("pe_version", PeRelease.V0_11_1).forGetter(PeChunkGenerator::release),
+        PeContentSettings.CODEC.optionalFieldOf("java_content", PeContentSettings.DEFAULT).forGetter(PeChunkGenerator::settings)
     ).apply(instance, PeChunkGenerator::new));
+    private final PeContentSettings settings;
+    private final PeRelease release;
     private final boolean old;
     private final boolean peSpawn;
     private final boolean nativeBiomeSeeds;
     private volatile PeWorldGenerator engine;
     private volatile long worldSeed;
     private volatile PePopulation population;
-    private final Map<Long, byte[]> chunks = new LinkedHashMap<>(64, 0.75f, true) {
-        @Override protected boolean removeEldestEntry(Map.Entry<Long, byte[]> eldest) { return size() > 128; }
+    private final Map<Long, PeWorldGenerator.TerrainChunk> chunks = new LinkedHashMap<>(64, 0.75f, true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<Long, PeWorldGenerator.TerrainChunk> eldest) { return size() > 128; }
     };
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn) {
@@ -58,11 +67,26 @@ public final class PeChunkGenerator extends ChunkGenerator {
     }
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds) {
-        super(biomeSource);
+        this(biomeSource, old, peSpawn, nativeBiomeSeeds, PeRelease.V0_11_1);
+    }
+
+    public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds, PeRelease release) {
+        this(biomeSource, old, peSpawn, nativeBiomeSeeds, release, PeContentSettings.DEFAULT);
+    }
+
+    public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds, PeRelease release, PeContentSettings settings) {
+        super(biomeSource, biome -> PeJavaContent.features(biome, settings));
+        this.settings = settings;
+        if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.configure(settings);
+        if (!release.supports(old)) throw new IllegalArgumentException("Unsupported finite PE release: " + release.id());
+        this.release = release;
         this.old = old;
         this.peSpawn = peSpawn;
         this.nativeBiomeSeeds = nativeBiomeSeeds;
     }
+
+    public PeContentSettings settings() { return settings; }
+    public PeRelease release() { return release; }
 
     public boolean usesPeSpawn() { return peSpawn; }
 
@@ -91,12 +115,12 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
-        engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds);
-        population = new PePopulation(seed,old,engine);
-        if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine);
+        engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds, release);
+        population = new PePopulation(seed,old,engine,settings.villages());
+        if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine, seed);
         chunks.clear();
         // Do not run Java stronghold-ring biome searches for a PE-only generator.
-        return StructurePlacementCalculator.create(noiseConfig, seed, biomeSource, java.util.stream.Stream.empty());
+        return StructurePlacementCalculator.create(noiseConfig, seed, biomeSource, PeJavaContent.structures(structures, settings, engine));
     }
 
     private PeWorldGenerator engine() {
@@ -105,23 +129,24 @@ public final class PeChunkGenerator extends ChunkGenerator {
         return result;
     }
 
-    private synchronized byte[] generate(int chunkX, int chunkZ) {
+    private synchronized PeWorldGenerator.TerrainChunk generate(int chunkX, int chunkZ) {
         PeWorldGenerator core = engine();
         // PE generators may own mutable PRNG/scratch state. Keep chunk order from introducing concurrent races.
         long key = ((long)chunkX << 32) | (chunkZ & 0xffffffffL);
-        return chunks.computeIfAbsent(key, ignored -> core.generateChunk(chunkX, chunkZ));
+        return chunks.computeIfAbsent(key, ignored -> core.terrainChunk(chunkX, chunkZ));
     }
 
     @Override protected MapCodec<? extends ChunkGenerator> getCodec() { return CODEC; }
 
     @Override
     public CompletableFuture<Chunk> populateNoise(Blender blender, NoiseConfig noise, StructureAccessor structures, Chunk chunk) {
-        byte[] data = generate(chunk.getPos().x, chunk.getPos().z);
+        var terrain = generate(chunk.getPos().x, chunk.getPos().z);
+        byte[] data=terrain.blocks();
         if (data.length != 32768) throw new IllegalStateException("Expected 16x16x128 PE chunk");
         BlockPos.Mutable position = new BlockPos.Mutable();
         for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) for (int y = 0; y < 128; y++) {
             int id = Byte.toUnsignedInt(data[(x * 16 + z) * 128 + y]);
-            if (id != 0) chunk.setBlockState(position.set(chunk.getPos().getStartX() + x, y, chunk.getPos().getStartZ() + z), LegacyBlocks.state(id));
+            if (id != 0) chunk.setBlockState(position.set(chunk.getPos().getStartX() + x, y, chunk.getPos().getStartZ() + z), LegacyBlocks.state(id,terrain.data()[(x*16+z)*128+y]));
         }
         Heightmap.populateHeightmaps(chunk, java.util.EnumSet.of(Heightmap.Type.OCEAN_FLOOR_WG, Heightmap.Type.WORLD_SURFACE_WG));
         return CompletableFuture.completedFuture(chunk);
@@ -134,12 +159,22 @@ public final class PeChunkGenerator extends ChunkGenerator {
         if(current==null)throw new IllegalStateException("PE population used before world seed initialization");
         boolean enabled=world.toServerWorld().getServer().getSaveProperties().getGeneratorOptions().shouldGenerateStructures();
         // Serialize PE's neighboring feature writes without holding the base-generation lock.
-        synchronized(current){current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);}
+        synchronized (current) {
+            current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
+            if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
+            if (settings.aquatic() || settings.villages()) super.generateFeatures(world,chunk,structures);
+            if (settings.bees()) PeJavaContent.beesAndBerries(world,chunk.getPos(),worldSeed,engine());
+        }
     }
     @Override public void populateEntities(ChunkRegion region) {}
-    @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {}
+    @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {
+        if (settings.aquatic() || settings.villages()) super.addStructureReferences(world,structures,chunk);
+    }
     @Override public void setStructureStarts(DynamicRegistryManager registries, StructurePlacementCalculator placements,
-        StructureAccessor structures, Chunk chunk, StructureTemplateManager templates, RegistryKey<World> dimension) {}
+        StructureAccessor structures, Chunk chunk, StructureTemplateManager templates, RegistryKey<World> dimension) {
+        if ((settings.aquatic() || settings.villages()) && engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z))
+            super.setStructureStarts(registries,placements,structures,chunk,templates,dimension);
+    }
 
     @Override public int getWorldHeight() { return 384; }
     @Override public int getMinimumY() { return -64; }
@@ -156,18 +191,19 @@ public final class PeChunkGenerator extends ChunkGenerator {
 
     @Override
     public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world, NoiseConfig noise) {
-        byte[] data = generate(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+        var terrain = generate(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+        byte[] data=terrain.blocks();
         BlockState[] states = new BlockState[world.getHeight()];
         java.util.Arrays.fill(states, net.minecraft.block.Blocks.AIR.getDefaultState());
         int offset = (Math.floorMod(x, 16) * 16 + Math.floorMod(z, 16)) * 128;
         int bottom = world.getBottomY();
         for (int y = Math.max(0, bottom); y < Math.min(PeWorldGenerator.HEIGHT, bottom + states.length); y++) {
-            states[y - bottom] = LegacyBlocks.state(Byte.toUnsignedInt(data[offset + y]));
+            states[y - bottom] = LegacyBlocks.state(Byte.toUnsignedInt(data[offset + y]),terrain.data()[offset+y]);
         }
         return new VerticalBlockSample(bottom, states);
     }
 
     @Override public void appendDebugHudText(List<String> text, NoiseConfig noise, BlockPos pos) {
-        text.add("PE 0.11.1 experimental / " + (old ? "old" : "infinite") + " / seed=" + worldSeed);
+        text.add("PE " + release.id() + " / " + (old ? "old" : "infinite") + " / seed=" + worldSeed);
     }
 }

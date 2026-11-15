@@ -15,12 +15,11 @@
     },
     "minecraft:the_nether": {
       "generator": {
+        "type": "pe_worldgen:pe_012_nether",
         "biome_source": {
-          "type": "minecraft:multi_noise",
-          "preset": "minecraft:nether"
-        },
-        "type": "minecraft:noise",
-        "settings": "minecraft:nether"
+          "type": "minecraft:fixed",
+          "biome": "minecraft:nether_wastes"
+        }
       },
       "type": "minecraft:the_nether"
     },

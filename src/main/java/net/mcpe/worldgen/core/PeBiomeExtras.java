@@ -6,13 +6,25 @@ final class PeBiomeExtras {
         if(id==35||id==36){
             if(!old){int x=bx+r.nextInt(16),z=bz+r.nextInt(16);PeBiomePopulation.doublePlant(w,r,x,w.surfaceY(x,z),z,2);}
         }else if(id==5||id==19||id==30||id==31||id==32||id==33||id==160){
+            boolean swapped=w.release().compareTo(PeRelease.V0_15_10)>=0;
             if(id==32||id==33||id==160){
                 int count=r.nextInt(3);
-                for(int i=0;i<count;i++){int x=bx+r.nextInt(16),z=bz+r.nextInt(16);boulder(w,r,x,w.surfaceY(x,z),z);}
+                for(int i=0;i<count;i++){
+                    int first=r.nextInt(16),second=r.nextInt(16);
+                    int x=swapped?bz+second:bx+first,z=swapped?bx+first:bz+second;
+                    if(Math.abs((x>>4)-(bx>>4))<=1 && Math.abs((z>>4)-(bz>>4))<=1)
+                        boulder(w,r,x,w.surfaceY(x,z),z);
+                }
             }
-            // This particular native call passes the two local offsets as world coordinates.
-            // A ChunkViewSource only supplies the chunks in its population window.
-            if(!old)for(int i=0;i<7;i++){
+            if(w.release().compareTo(PeRelease.V0_14_3)>=0){
+                int first=r.nextInt(16),second=r.nextInt(16);
+                int x=swapped?bz+second:bx+first,z=swapped?bx+first:bz+second;
+                // 0.15/0.16 transpose the complete BlockPos. Outside the native
+                // population window all height reads and grass placement attempts fail.
+                if(Math.abs((x>>4)-(bx>>4))<=1 && Math.abs((z>>4)-(bz>>4))<=1)
+                    PeBiomePopulation.doublePlant(w,r,x,w.surfaceY(x,z),z,3);
+                else for(int draw=0;draw<384;draw++)r.nextRawInt();
+            }else if(!old)for(int i=0;i<7;i++){
                 int x=r.nextInt(16),z=r.nextInt(16);
                 if(Math.abs(bx)<=16&&Math.abs(bz)<=16)
                     PeBiomePopulation.doublePlant(w,r,x,r.nextInt(w.surfaceY(x,z)+32),z,3);

@@ -1,5 +1,8 @@
 package net.mcpe.worldgen.fabric.client;
 
+import net.mcpe.worldgen.core.PeRelease;
+import net.mcpe.worldgen.fabric.PeContentSettings;
+import net.mcpe.worldgen.fabric.PeOceanClimate;
 import net.mcpe.worldgen.core.PeWorldGenerator;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
@@ -25,30 +28,42 @@ final class PeBiomePreviewScreen extends Screen {
         0xdbb976,0x386538,0x416e60,0x7c9478,0x398535,0x32702e,0x57954c,0x18395e,0x97928b,0xd6d8b9,
         0x73a65d,0x638f52,0x325739,0xa0b9ab,0x92aaa0,0x637c58,0x576f50,0x65856a,0xc3b663,
         0xb5a556,0xc87952,0xad7852,0xb66f44};
+    private static final java.util.List<String> OVERLAYS=java.util.List.of("ocean","frozen_ocean","deep_ocean","warm_ocean","lukewarm_ocean","deep_lukewarm_ocean","cold_ocean","deep_cold_ocean","deep_frozen_ocean","bamboo_jungle","bamboo_jungle_hills","the_void");
+    private static final int[] OVERLAY_COLORS={0x28568a,0x97bbda,0x18395e,0x22b6ac,0x3e9eb5,0x296c85,0x365a90,0x263f68,0x687f9e,0x52782d,0x416123,0x16161a};
     private final Screen parent;
     private final long seed;
     private final int originX, originZ, extent;
     private final int[] biomes;
     private boolean registered;
 
-    PeBiomePreviewScreen(Screen parent, long seed, boolean old) {
+    PeBiomePreviewScreen(Screen parent, long seed, boolean old, PeRelease release, PeContentSettings settings) {
         super(PeCustomizeScreen.label("preview"));
         this.parent = parent;
         this.seed = seed;
-        var generator = new PeWorldGenerator(seed, old, true, true);
+        var generator = new PeWorldGenerator(seed, old, true, true, release);
         var spawn = generator.initialSpawn();
         extent = old ? 256 : 512;
         originX = (spawn.x() & ~15) - extent / 2;
         originZ = (spawn.z() & ~15) - extent / 2;
-        biomes = generator.biomeArea(originX, originZ, extent, extent);
+        int margin=36, stride=extent+2*margin;
+        int[] raw=generator.biomeArea(originX-margin,originZ-margin,stride,stride);
+        var climate=new PeOceanClimate(seed);
+        java.util.function.IntBinaryOperator sample=(qx,qz)->raw[(qx*4-originX+margin)+(qz*4-originZ+margin)*stride];
+        biomes=new int[extent*extent];
+        for(int z=0; z<extent; z+=4) for(int x=0; x<extent; x+=4) {
+            int qx=(originX+x)>>2,qz=(originZ+z)>>2,id=sample.applyAsInt(qx,qz);
+            String name=old && generator.finiteBorder().outsideBiomeCell(qx,qz) ? "the_void" : climate.biome(id,qx,qz,settings,sample);
+            int value=name==null?id:256+OVERLAYS.indexOf(name);
+            for(int dz=0;dz<4;dz++) java.util.Arrays.fill(biomes,(z+dz)*extent+x,(z+dz)*extent+x+4,value);
+        }
     }
 
     @Override protected void init() {
         if (!registered) {
             var image = new NativeImage(extent, extent, false);
             for (int z = 0; z < extent; z++) for (int x = 0; x < extent; x++) {
-                int id = biomes[x + z * extent] & 127;
-                image.setColorArgb(x, z, 0xff000000 | (id < COLORS.length ? COLORS[id] : 0x888888));
+                int raw = biomes[x + z * extent], id = raw & 127;
+                image.setColorArgb(x, z, 0xff000000 | (raw>=256 ? OVERLAY_COLORS[raw-256] : id < COLORS.length ? COLORS[id] : 0x888888));
             }
             var texture = new NativeImageBackedTexture(() -> "PE biome preview", image);
             client.getTextureManager().registerTexture(MAP, texture);
@@ -77,6 +92,11 @@ final class PeBiomePreviewScreen extends Screen {
             int base = id & 127;
             String name = base < NAMES.length ? NAMES[base] : "Biome";
             String caption = (originX + dx) + ", " + (originZ + dz) + "   " + name + (id >= 128 ? " M" : "") + " (" + id + ")";
+            if(id>=256) {
+                String path=OVERLAYS.get(id-256);
+                String label=Text.translatable("biome."+(path.equals("bamboo_jungle_hills")?"pe_worldgen.":"minecraft.")+path).getString();
+                caption=(originX+dx)+", "+(originZ+dz)+"   "+label;
+            }
             context.drawCenteredTextWithShadow(textRenderer, caption, width / 2, y + size + 3, -1);
         }
     }

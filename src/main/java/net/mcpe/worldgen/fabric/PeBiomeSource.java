@@ -28,6 +28,9 @@ public final class PeBiomeSource extends BiomeSource {
     private final boolean old;
     private final Map<Integer, RegistryEntry<Biome>> palette = new LinkedHashMap<>();
     private final RegistryEntry<Biome> voidBiome;
+    private final Map<String,RegistryEntry<Biome>> extra = new LinkedHashMap<>();
+    private PeContentSettings options = PeContentSettings.DEFAULT;
+    private PeOceanClimate climate;
     private volatile PeWorldGenerator core;
     private final Map<Long, int[]> areas = new LinkedHashMap<>(256, 0.75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, int[]> eldest) { return size() > 256; }
@@ -36,6 +39,9 @@ public final class PeBiomeSource extends BiomeSource {
     public PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old) {
         this.old = old;
         voidBiome = lookup(biomes, "the_void");
+        for (String name : new String[]{"ocean","frozen_ocean","deep_ocean","warm_ocean","lukewarm_ocean","cold_ocean","deep_lukewarm_ocean","deep_cold_ocean","deep_frozen_ocean","bamboo_jungle"})
+            extra.put(name,lookup(biomes,name));
+        extra.put("bamboo_jungle_hills",biomes.getOrThrow(RegistryKey.of(RegistryKeys.BIOME, Identifier.of("pe_worldgen","bamboo_jungle_hills"))));
         String[] names = {
             "ocean", "plains", "desert", "windswept_hills", "forest", "taiga", "swamp", "river",
             "nether_wastes", "the_end", "frozen_ocean", "frozen_river", "snowy_plains", "snowy_plains",
@@ -59,22 +65,32 @@ public final class PeBiomeSource extends BiomeSource {
         return registry.getOrThrow(RegistryKey.of(RegistryKeys.BIOME, Identifier.ofVanilla(path)));
     }
     private void map(RegistryEntryLookup<Biome> registry, int id, String name) { palette.put(id, lookup(registry, name)); }
-    synchronized void attach(PeWorldGenerator generator) { core = generator; areas.clear(); }
+    void configure(PeContentSettings settings) { options = settings; }
+    synchronized void attach(PeWorldGenerator generator,long seed) {
+        core = generator;
+        climate = new PeOceanClimate(seed);
+        areas.clear();
+    }
     @Override protected MapCodec<? extends BiomeSource> getCodec() { return CODEC; }
     @Override protected Stream<RegistryEntry<Biome>> biomeStream() {
-        Stream<RegistryEntry<Biome>> inside = palette.values().stream().distinct();
+        Stream<RegistryEntry<Biome>> inside = Stream.concat(palette.values().stream(), extra.values().stream()).distinct();
         return old ? Stream.concat(inside, Stream.of(voidBiome)) : inside;
     }
     @Override public synchronized RegistryEntry<Biome> getBiome(int x, int y, int z, MultiNoiseUtil.MultiNoiseSampler noise) {
         PeWorldGenerator generator = core;
         if (generator == null) return palette.get(1);
-        int chunkX = x >> 2, chunkZ = z >> 2;
         // Moderner Beta PRE rule: apply the out-of-bounds predicate before resolving any PE biome.
         var border = generator.finiteBorder();
         if (border != null && border.outsideBiomeCell(x, z)) return voidBiome;
-        long key = ((long)chunkX << 32) | (chunkZ & 0xffffffffL);
-        int[] area = areas.computeIfAbsent(key, ignored -> generator.biomeArea(chunkX << 4, chunkZ << 4, 16, 16));
-        int id = area[(x & 3) * 4 + (z & 3) * 64];
-        return palette.getOrDefault(id, palette.get(1));
+        int id = sample(x,z);
+        String replacement=climate.biome(id,x,z,options,this::sample);
+        return replacement==null ? palette.getOrDefault(id,palette.get(1)) : extra.get(replacement);
+    }
+
+    private int sample(int x,int z) {
+        int chunkX=x>>2, chunkZ=z>>2;
+        long key=((long)chunkX<<32)|Integer.toUnsignedLong(chunkZ);
+        int[] area=areas.computeIfAbsent(key, ignored -> core.biomeArea(chunkX<<4,chunkZ<<4,16,16));
+        return area[(x&3)*4+(z&3)*64];
     }
 }

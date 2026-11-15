@@ -18,9 +18,16 @@ public final class PeSimplexNoise {
     public final float offsetZ;
 
     public PeSimplexNoise(PeRandom random) {
-        offsetX = random.nextFloat() * 256.0f;
+        this(random, false);
+    }
+
+    PeSimplexNoise(PeRandom random, boolean reverseOffsets) {
+        float first = random.nextFloat() * 256.0f;
         offsetY = random.nextFloat() * 256.0f;
-        offsetZ = random.nextFloat() * 256.0f;
+        float third = random.nextFloat() * 256.0f;
+        // The 0.15 and 0.16 ARM constructors store their first and third draws in reverse order.
+        offsetX = reverseOffsets ? third : first;
+        offsetZ = reverseOffsets ? first : third;
         for (int i = 0; i < 256; i++) permutations[i] = i;
         for (int i = 0; i < 256; i++) {
             int j = i + random.nextInt(256 - i);

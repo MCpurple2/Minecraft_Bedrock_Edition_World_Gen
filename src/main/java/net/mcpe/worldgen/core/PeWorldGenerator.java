@@ -12,6 +12,7 @@ public final class PeWorldGenerator {
     public static final int HEIGHT = 128;
     public static final int SEA_LEVEL = 63;
     private final boolean old;
+    private final PeRelease release;
     public record Spawn(int x, int y, int z) {}
     private final boolean useSpawnBounds;
     private final boolean nativeBiomeSeeds;
@@ -21,6 +22,7 @@ public final class PeWorldGenerator {
     private final PeBiomes biomes;
     private final PeOctaveNoise lower, upper, selector, depth;
     private final PeSimplexOctaves surface;
+    private final PeSpecialSurfaces specialSurfaces;
     private static float f(int bits) { return Float.intBitsToFloat(bits); }
     private static final float[] KERNEL = {
         f(0x40d7be73), f(0x41120f31), f(0x40d7be73),
@@ -37,28 +39,41 @@ public final class PeWorldGenerator {
     }
 
     public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds) {
+        this(seed, old, useSpawnBounds, nativeBiomeSeeds, PeRelease.V0_11_1);
+    }
+
+    public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds, PeRelease release) {
+        if (!release.supports(old)) throw new IllegalArgumentException(release.id());
+        this.release = release;
         this.old = old;
         this.useSpawnBounds = useSpawnBounds;
         this.nativeBiomeSeeds = nativeBiomeSeeds;
         this.worldSeed = seed;
-        caves = old ? null : new PeCaves(seed);
+        boolean reversedAxes = release.ordinal() >= PeRelease.V0_15_10.ordinal();
+        specialSurfaces = release==PeRelease.V0_11_1 ? null : new PeSpecialSurfaces(seed);
+        caves = old ? null : new PeCaves(seed, false, reversedAxes);
         PeRandom random = new PeRandom(seed);
         lower = new PeOctaveNoise(random, 16);
         upper = new PeOctaveNoise(random, 16);
         selector = new PeOctaveNoise(random, 8);
-        surface = new PeSimplexOctaves(random, 4);
+        surface = new PeSimplexOctaves(random, 4, reversedAxes);
         // Native constructs both of these even when getHeights does not sample them.
         new PeOctaveNoise(random, 10);
         depth = new PeOctaveNoise(random, 16);
         new PeOctaveNoise(random, 8);
-        biomes = new PeBiomes(seed, old, nativeBiomeSeeds);
+        biomes = new PeBiomes(seed, old, nativeBiomeSeeds, release);
+    }
+
+    public int structureBiomeAt(int chunkX,int chunkZ) {
+        return biomes.rawArea(chunkX*4+2,chunkZ*4+2,1,1)[0];
     }
 
     PeBiomes biomes() { return biomes; }
+    public PeRelease release() { return release; }
     public int biomeAt(int x, int z) { return biomes.biomeAt(x, z); }
     public synchronized Spawn initialSpawn() {
         if (initialSpawn == null) {
-            PeBiomes spawnBiomes = nativeBiomeSeeds ? biomes : new PeBiomes(worldSeed, old, true);
+            PeBiomes spawnBiomes = nativeBiomeSeeds ? biomes : new PeBiomes(worldSeed, old, true, release);
             initialSpawn = spawnBiomes.initialSpawn();
         }
         return initialSpawn;
@@ -84,15 +99,21 @@ public final class PeWorldGenerator {
     }
 
     public synchronized byte[] generateChunk(int chunkX, int chunkZ) {
+        return terrainChunk(chunkX,chunkZ).blocks();
+    }
+
+    public record TerrainChunk(byte[] blocks, byte[] data) {}
+    public synchronized TerrainChunk terrainChunk(int chunkX,int chunkZ) {
         byte[] blocks = new byte[16 * 16 * HEIGHT];
+        byte[] metadata = new byte[blocks.length];
         if (!isInsideChunk(chunkX, chunkZ)) {
-            return blocks;
+            return new TerrainChunk(blocks,metadata);
         }
         float[] densities = densities(chunkX, chunkZ);
         interpolate(blocks, densities);
-        buildCommonSurface(blocks, chunkX, chunkZ);
+        buildCommonSurface(blocks,metadata,chunkX,chunkZ);
         if (caves != null) caves.carve(blocks, chunkX, chunkZ);
-        return blocks;
+        return new TerrainChunk(blocks,metadata);
     }
 
     private float[] densities(int chunkX, int chunkZ) {
@@ -197,19 +218,42 @@ public final class PeWorldGenerator {
         if (caves!=null) return caves.lastSourceRandom(chunkX,chunkZ);
         byte[] blocks=new byte[16*16*HEIGHT];
         interpolate(blocks,densities(chunkX,chunkZ));
-        return buildCommonSurface(blocks,chunkX,chunkZ);
+        return buildCommonSurface(blocks,new byte[blocks.length],chunkX,chunkZ);
     }
 
-    private PeRandom buildCommonSurface(byte[] blocks, int chunkX, int chunkZ) {
-        float[] noise = surface.getRegion2D(null, chunkX * 16, chunkZ * 16, 16, 16, 0.0625f, 0.0625f, 1.0f);
+    private PeRandom buildCommonSurface(byte[] blocks, byte[] metadata, int chunkX, int chunkZ) {
+        boolean planarSurface = release.ordinal() >= PeRelease.V0_14_3.ordinal();
+        float[] noise = planarSurface ? surface.surface2D(chunkX * 16, chunkZ * 16)
+            : surface.getRegion2D(null, chunkX * 16, chunkZ * 16, 16, 16, 0.0625f, 0.0625f, 1.0f);
         int[] ids = biomes.zoomedArea(chunkX * 16, chunkZ * 16, 16, 16);
         PeRandom random = new PeRandom(chunkX * 0x14609048 + chunkZ * 0x07ebe2d5);
         for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) {
             int biome = ids[x + z * 16];
             int base = (x * 16 + z) * 128;
             int originalTop = top(biome), originalFiller = filler(biome);
+            int noiseIndex = planarSurface ? x + z * 16 : x * 16 + z;
+            int topData=0;
+            if(specialSurfaces!=null) {
+                float n=noise[noiseIndex];
+                int wx=chunkX*16+x,wz=chunkZ*16+z;
+                if(PeSpecialSurfaces.mesa(biome)) {
+                    specialSurfaces.mesaColumn(blocks,metadata,base,wx,wz,biome,n,random);
+                    continue;
+                }
+                if(biome==6 || biome==134) specialSurfaces.swamp(blocks,base,wx,wz);
+                if(biome==3 || biome==20 || biome==34 || biome==131 || biome==162) {
+                    if((biome==131 || biome==162) && (n<-.1f || n>.2f)) originalTop=originalFiller=13;
+                    else if(n>1f && biome!=34 && biome!=20) originalTop=originalFiller=1;
+                } else if(biome==163 || biome==164) {
+                    if(n>1.75f) originalTop=originalFiller=1;
+                    else if(n>-.5f) {originalTop=3;topData=1;}
+                } else if(biome==32 || biome==33 || biome==160 || biome==161) {
+                    if(n>1.75f) {originalTop=3;topData=1;}
+                    else if(n>-.95) originalTop=243;
+                }
+            }
             int top = originalTop, filler = originalFiller;
-            int thickness = (int)(noise[x * 16 + z] * 0.33333334f + 3.0f + random.nextFloat() * 0.25f);
+            int thickness = (int)(noise[noiseIndex] * 0.33333334f + 3.0f + random.nextFloat() * 0.25f);
             int bedrockHeight = (random.nextRawInt() & 3) + 2;
             for (int y = 0; y < bedrockHeight; y++) blocks[base + y] = 7;
             int remaining = -1;
@@ -222,7 +266,7 @@ public final class PeWorldGenerator {
                     else if (y >= 59 && y < 65) { top = originalTop; filler = originalFiller; }
                     if (y < 63 && top == 0) top = cold(biome) ? 79 : 9;
                     remaining = thickness;
-                    if (y >= 62) blocks[base + y] = (byte) top;
+                    if (y >= 62) {blocks[base+y]=(byte)top; if(top==originalTop)metadata[base+y]=(byte)topData;}
                     else if (y < 56 - thickness) { filler = 1; top = 0; blocks[base + y] = 13; }
                     else blocks[base + y] = (byte) filler;
                 } else if (remaining > 0) {

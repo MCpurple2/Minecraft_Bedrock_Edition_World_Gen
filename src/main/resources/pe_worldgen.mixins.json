@@ -2,7 +2,7 @@
   "required": true,
   "package": "net.mcpe.worldgen.fabric.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin", "PeWorldBiomeAccessMixin"],
+  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin", "PeWorldBiomeAccessMixin", "PePortalMixin", "PeFeatureRegionMixin", "MonumentRoomsAccessor", "MonumentRoomShuffleMixin"],
   "injectors": { "defaultRequire": 1 }
 }
 

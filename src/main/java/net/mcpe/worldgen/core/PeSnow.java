@@ -7,13 +7,19 @@ package net.mcpe.worldgen.core;
 public final class PeSnow {
     private PeSnow() {}
     public static void apply(PePopulationWorld w,int bx,int bz) {
+        apply(w,bx,bz,true,true);
+    }
+    static void freeze(PePopulationWorld w,int bx,int bz){apply(w,bx,bz,true,false);}
+    static void cover(PePopulationWorld w,int bx,int bz){apply(w,bx,bz,false,true);}
+    private static void apply(PePopulationWorld w,int bx,int bz,boolean freeze,boolean snow) {
         for(int dx=0;dx<16;dx++)for(int dz=0;dz<16;dz++) {
-            int x=bx+dx,z=bz+dz,y=rainY(w,x,z);
+            int x=bx+dx,z=bz+dz;
             if(!cold(w.biomeAt(x,z)))continue;
+            int y=rainY(w,x,z);
             int below=w.getBlock(x,y-1,z);
-            if(y>0&&y<=128&&(below==8||below==9)&&w.getData(x,y-1,z)==0&&w.blockBrightness(x,y-1,z)<10)
+            if(freeze&&y>0&&y<=128&&(below==8||below==9)&&w.getData(x,y-1,z)==0&&w.blockBrightness(x,y-1,z)<10)
                 w.setBlock(x,y-1,z,79,0);
-            if(y<0||y>=128||w.blockBrightness(x,y,z)>=10||w.getBlock(x,y,z)!=0)continue;
+            if(!snow||y<0||y>=128||w.blockBrightness(x,y,z)>=10||w.getBlock(x,y,z)!=0)continue;
             below=w.getBlock(x,y-1,z);
             if((below==18||below==161||w.solidRender(x,y-1,z))&&PeSurfacePatches.solid(below))w.setBlock(x,y,z,78,0);
         }

@@ -27,15 +27,23 @@ public final class PeOres {
         }
     }
     public static void place(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int size) {
+        boolean later = w.release() != PeRelease.V0_11_1;
         float angle=r.nextFloat()*32768.0f;
         float sin=PeMth.indexed((int)angle), cos=PeMth.indexed((int)(angle+16384.0f));
         float extent=(float)size*0.125f;
         float x1=extent*sin+(float)(x+8), x2=(float)(x+8)-extent*sin;
         float z1=extent*cos+(float)(z+8), z2=(float)(z+8)-extent*cos;
-        float y1=(float)(y+r.nextInt(3)+2), y2=(float)(y+r.nextInt(3)+2);
-        for(int step=0;step<=size;step++) {
+        int offsetY = later ? -2 : 2;
+        float y1=(float)(y+r.nextInt(3)+offsetY), y2=(float)(y+r.nextInt(3)+offsetY);
+        int steps = later ? size : size+1;
+        int substrate = id == 153 ? 87 : 1;
+        for(int step=0;step<steps;step++) {
             float inverse=1.0f/(float)size, t=(float)step;
             float px=x1+t*(x2-x1)*inverse, py=y1+t*(y2-y1)*inverse, pz=z1+t*(z2-z1)*inverse;
+            if(later) {
+                float fraction=t/(float)size;
+                px=x1+fraction*(x2-x1); py=y1+fraction*(y2-y1); pz=z1+fraction*(z2-z1);
+            }
             float thickness=(float)size*0.0625f*r.nextFloat();
             float radius=(thickness+PeMth.sin((t*3.1415927f)/(float)size)*thickness)*0.5f+0.5f;
             float reciprocal=1.0f/radius;
@@ -47,7 +55,7 @@ public final class PeOres {
                     if(xy>=1.0f)continue;
                     for(int zz=(int)(pz-radius);zz<=(int)(pz+radius);zz++) {
                         float dz=reciprocal*((float)zz+(0.5f-pz));
-                        if(xy+dz*dz<1.0f && w.isInside(xx,yy,zz) && w.getBlock(xx,yy,zz)==1)
+                        if(xy+dz*dz<1.0f && w.isInside(xx,yy,zz) && w.getBlock(xx,yy,zz)==substrate)
                             w.setBlock(xx,yy,zz,id,data);
                     }
                 }

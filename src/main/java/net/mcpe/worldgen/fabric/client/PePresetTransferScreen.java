@@ -1,5 +1,8 @@
 package net.mcpe.worldgen.fabric.client;
 
+import net.mcpe.worldgen.core.PeRelease;
+import net.mcpe.worldgen.fabric.PeContentSettings;
+import com.mojang.serialization.JsonOps;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
@@ -20,7 +23,9 @@ import net.minecraft.util.Util;
 
 final class PePresetTransferScreen extends Screen {
     private final PeCustomizeScreen parent;
+    private final PeRelease release;
     private final boolean old;
+    private final PeContentSettings settings;
     private final boolean pack;
     private TextFieldWidget field;
     private Text status = Text.empty();
@@ -28,14 +33,17 @@ final class PePresetTransferScreen extends Screen {
     private String draft;
     private Path exported;
 
-    PePresetTransferScreen(PeCustomizeScreen parent, boolean old, boolean pack) {
+    PePresetTransferScreen(PeCustomizeScreen parent, boolean old, PeRelease release, PeContentSettings settings, boolean pack) {
         super(PeCustomizeScreen.label(pack ? "export_pack" : "quick"));
         this.parent = parent;
         this.old = old;
+        this.release = release;
         this.pack = pack;
+        this.settings = settings;
         var json = new JsonObject();
-        json.addProperty("version", "0.11.1");
+        json.addProperty("version", release.id());
         json.addProperty("world_type", old ? "finite" : "infinite");
+        json.add("java_content",PeContentSettings.CODEC.encodeStart(JsonOps.INSTANCE,settings).getOrThrow());
         encoded = json.toString();
         draft = encoded;
     }
@@ -70,10 +78,12 @@ final class PePresetTransferScreen extends Screen {
             addDrawableChild(ButtonWidget.builder(PeCustomizeScreen.label("import"), b -> {
                 try {
                     var json = JsonParser.parseString(field.getText()).getAsJsonObject();
-                    if (!"0.11.1".equals(json.get("version").getAsString())) throw new IllegalArgumentException();
+                    PeRelease imported = PeRelease.byId(json.get("version").getAsString()).orElseThrow();
+                    PeContentSettings importedSettings = json.has("java_content")
+                        ? PeContentSettings.CODEC.parse(JsonOps.INSTANCE,json.get("java_content")).getOrThrow() : PeContentSettings.DEFAULT;
                     switch (json.get("world_type").getAsString()) {
-                        case "finite" -> parent.importPreset(true);
-                        case "infinite" -> parent.importPreset(false);
+                        case "finite" -> parent.importPreset(true, imported, importedSettings);
+                        case "infinite" -> parent.importPreset(false, imported, importedSettings);
                         default -> throw new IllegalArgumentException();
                     }
                 } catch (RuntimeException ex) { status = PeCustomizeScreen.label("invalid"); }
@@ -83,7 +93,7 @@ final class PePresetTransferScreen extends Screen {
     }
 
     private Path exportPack() throws IOException {
-        String id = old ? "pe_0111_old" : "pe_0111_infinite";
+        String id = release.presetPath(old);
         var directory = client.runDirectory.toPath().resolve("data-pack-exports");
         Files.createDirectories(directory);
         var format = SharedConstants.getGameVersion().packVersion(ResourceType.SERVER_DATA);
@@ -93,7 +103,7 @@ final class PePresetTransferScreen extends Screen {
         version.add(format.minor());
         meta.add("min_format", version);
         meta.add("max_format", version);
-        meta.addProperty("description", (old ? PeCustomizeScreen.FINITE : PeCustomizeScreen.INFINITE) + " 0.11.1");
+        meta.addProperty("description", (old ? PeCustomizeScreen.FINITE : PeCustomizeScreen.INFINITE) + " " + release.id());
         var root = new JsonObject();
         root.add("pack", meta);
         Path output = Files.createTempFile(directory, id + "-", ".zip");
@@ -104,7 +114,17 @@ final class PePresetTransferScreen extends Screen {
             zip.write(root.toString().getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
             zip.putNextEntry(new ZipEntry("data/pe_worldgen/worldgen/world_preset/mcpe_alpha.json"));
-            preset.transferTo(zip);
+            var data = JsonParser.parseReader(new java.io.InputStreamReader(preset,StandardCharsets.UTF_8)).getAsJsonObject();
+            var dims = data.getAsJsonObject("dimensions");
+            dims.getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").add("java_content",
+                PeContentSettings.CODEC.encodeStart(JsonOps.INSTANCE,settings).getOrThrow());
+            if (settings.netherUpdate()) {
+                var gen = JsonParser.parseString("""
+                    {"type":"minecraft:noise","settings":"minecraft:nether","biome_source":{"type":"minecraft:multi_noise","preset":"minecraft:nether"}}
+                    """);
+                dims.getAsJsonObject("minecraft:the_nether").add("generator",gen);
+            }
+            zip.write(data.toString().getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
         } catch (IOException ex) { Files.deleteIfExists(output); throw ex; }
         return output;

@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "version": "${version}",
   "name": "Pocket Edition World Generator",
-  "description": "Experimental PE 0.11.1 world generator port. See research notes for fidelity limits.",
+  "description": "Experimental Pocket Edition Alpha world generators. See research notes for fidelity limits.",
   "environment": "*",
   "entrypoints": { "main": ["net.mcpe.worldgen.fabric.PeWorldgenMod"], "client": ["net.mcpe.worldgen.fabric.client.PeWorldgenClient"] },
   "mixins": ["pe_worldgen.mixins.json", "pe_worldgen.client.mixins.json"],

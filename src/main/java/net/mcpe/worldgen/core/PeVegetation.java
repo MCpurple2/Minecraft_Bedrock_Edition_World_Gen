@@ -46,7 +46,7 @@ public final class PeVegetation {
         if(id==86)return below==2&&w.solidTop(x,y-1,z);
         return ground(below)&&(w.canSeeSky(x,y,z)||w.rawBrightness(x,y,z)>7);
     }
-    private static void scatter(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int attempts,int pumpkin){
+    static void scatter(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int attempts,int pumpkin){
         for(int i=0;i<attempts;i++){
             int px=x+(r.nextRawInt()&7)-(r.nextRawInt()&7),py=y+(r.nextRawInt()&3)-(r.nextRawInt()&3),pz=z+(r.nextRawInt()&7)-(r.nextRawInt()&7);
             if(w.isInside(px,py,pz)&&w.getBlock(px,py,pz)==0&&survive(w,px,py,pz,id))w.setBlock(px,py,pz,id,pumpkin==0?data:r.nextRawInt()&3);

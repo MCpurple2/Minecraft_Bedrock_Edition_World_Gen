@@ -1,8 +1,16 @@
 package net.mcpe.worldgen.fabric.client;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
+import net.mcpe.worldgen.core.PeRelease;
+import net.mcpe.worldgen.fabric.PeContentSettings;
+import net.mcpe.worldgen.fabric.PeNetherChunkGenerator;
+import net.minecraft.world.biome.BiomeKeys;
+import net.minecraft.world.biome.source.FixedBiomeSource;
+import net.minecraft.world.biome.source.MultiNoiseBiomeSource;
+import net.minecraft.world.biome.source.MultiNoiseBiomeSourceParameterLists;
+import net.minecraft.world.gen.chunk.NoiseChunkGenerator;
+import net.minecraft.world.gen.chunk.ChunkGeneratorSettings;
 import net.mcpe.worldgen.fabric.PeBiomeSource;
 import net.mcpe.worldgen.fabric.PeChunkGenerator;
 import net.minecraft.client.gui.DrawContext;
@@ -34,11 +42,17 @@ public final class PeCustomizeScreen extends Screen {
     };
     private final CreateWorldScreen parent;
     private boolean old;
+    private PeContentSettings settings = PeContentSettings.DEFAULT;
+    private PeRelease release = PeRelease.V0_11_1;
 
     public PeCustomizeScreen(CreateWorldScreen parent, GeneratorOptionsHolder options) {
         super(label("title"));
         this.parent = parent;
-        old = options.selectedDimensions().getChunkGenerator() instanceof PeChunkGenerator generator && generator.isOld();
+        if (options.selectedDimensions().getChunkGenerator() instanceof PeChunkGenerator generator) {
+            old = generator.isOld();
+            release = generator.release();
+            settings = generator.settings();
+        }
     }
 
     static Text label(String key, Object... args) {
@@ -58,9 +72,14 @@ public final class PeCustomizeScreen extends Screen {
 
     private void openVersions(boolean finite) {
         String category = finite ? FINITE : INFINITE;
-        var version = new PePresetScreen.Choice("0.11.1", Text.literal(category + " 0.11.1"),
-            () -> importPreset(finite));
-        client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), List.of(version)));
+        var choices = new ArrayList<PePresetScreen.Choice>();
+        for (PeRelease candidate : PeRelease.values()) {
+            if (candidate.supports(finite)) {
+                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal(category + " " + candidate.id()),
+                    () -> importPreset(finite, candidate)));
+            }
+        }
+        client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), choices));
     }
 
     private ButtonWidget button(Text text, int x, int y, int w, Runnable action) {
@@ -78,45 +97,67 @@ public final class PeCustomizeScreen extends Screen {
         button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
         for (int i = 0; i < 3; i++) {
             var setting = button(Text.literal(i == 0 ? "Setting" : "WIP"), mid - half + 102, y + 24 + i * 24,
-                Math.max(65, half * 2 - 140), () -> {});
-            setting.active = false;
+                Math.max(65, half * 2 - 140), () -> client.setScreen(new PeContentScreen(this, old, settings, value -> settings = value)));
+            setting.active = i == 0;
             var advanced = button(Text.literal("…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20, () -> {});
             advanced.active = false;
         }
         int actions = y + 100;
         button(label("reset"), mid - half - 5, actions, half, () -> client.setScreen(new ConfirmScreen(answer -> {
-            if (answer) old = false;
+            if (answer) {
+                old = false;
+                release = PeRelease.V0_11_1;
+                settings = PeContentSettings.DEFAULT;
+            }
             client.setScreen(this);
         }, label("reset"), label("reset_prompt"), label("reset"), ScreenTexts.CANCEL)));
         button(label("preview"), mid + 5, actions, half, () -> {
             long seed = GeneratorOptions.parseSeed(parent.getWorldCreator().getSeed())
                 .orElse(parent.getWorldCreator().getGeneratorOptionsHolder().generatorOptions().getSeed());
-            client.setScreen(new PeBiomePreviewScreen(this, seed, old));
+            client.setScreen(new PeBiomePreviewScreen(this, seed, old, release, settings));
         });
         button(label("quick"), mid - half - 5, actions + 24, half,
-            () -> client.setScreen(new PePresetTransferScreen(this, old, false)));
+            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, false)));
         button(label("export_pack"), mid + 5, actions + 24, half,
-            () -> client.setScreen(new PePresetTransferScreen(this, old, true)));
+            () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, true)));
         button(ScreenTexts.DONE, mid - half - 5, height - 27, half, this::apply);
         button(ScreenTexts.CANCEL, mid + 5, height - 27, half, this::close);
     }
 
     private Text presetLabel() {
-        return label("preset", Text.literal(old ? FINITE : INFINITE).formatted(Formatting.YELLOW));
+        return label("preset", Text.literal((old ? FINITE : INFINITE) + " " + release.id()).formatted(Formatting.YELLOW));
     }
 
-    void importPreset(boolean selectedOld) {
+    void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported) {
+        if (!selectedRelease.supports(selectedOld)) throw new IllegalArgumentException("Unsupported finite preset");
+        settings = imported;
+        importPreset(selectedOld,selectedRelease);
+    }
+    void importPreset(boolean selectedOld, PeRelease selectedRelease) {
+        if (!selectedRelease.supports(selectedOld)) throw new IllegalArgumentException("Unsupported finite preset");
+        release = selectedRelease;
         old = selectedOld;
         client.setScreen(this);
     }
 
     private void apply() {
         boolean selectedOld = old;
+        PeRelease selectedRelease = release;
+        PeContentSettings selectedSettings = settings;
         parent.getWorldCreator().applyModifier((registries, dimensions) -> {
-            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true);
+            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true, selectedRelease, selectedSettings);
             var updated = new LinkedHashMap<>(dimensions.dimensions());
             var overworld = registries.getOrThrow(RegistryKeys.DIMENSION_TYPE).getOrThrow(DimensionTypes.OVERWORLD);
             updated.put(DimensionOptions.OVERWORLD, new DimensionOptions(overworld, generator));
+            var nether = updated.get(DimensionOptions.NETHER);
+            if (nether != null) {
+                var replacement = selectedSettings.netherUpdate()
+                    ? new NoiseChunkGenerator(MultiNoiseBiomeSource.create(registries.getOrThrow(RegistryKeys.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
+                        .getOrThrow(MultiNoiseBiomeSourceParameterLists.NETHER)), registries.getOrThrow(RegistryKeys.CHUNK_GENERATOR_SETTINGS)
+                        .getOrThrow(ChunkGeneratorSettings.NETHER))
+                    : new PeNetherChunkGenerator(new FixedBiomeSource(registries.getOrThrow(RegistryKeys.BIOME).getOrThrow(BiomeKeys.NETHER_WASTES)));
+                updated.put(DimensionOptions.NETHER, new DimensionOptions(nether.dimensionTypeEntry(), replacement));
+            }
             return new DimensionOptionsRegistryHolder(updated);
         });
         client.setScreen(parent);
