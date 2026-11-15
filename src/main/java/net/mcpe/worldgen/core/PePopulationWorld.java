@@ -2,8 +2,8 @@ package net.mcpe.worldgen.core;
 
 /** Narrow legacy-world boundary shared by native population/structure ports.
  * Coordinates are global block coordinates. Y is restricted to 0..127.
- * surfaceY returns the first air position above the highest non-air block,
- * matching the native height-map convention (0 for an empty column). */
+ * surfaceY returns PE's skylight height, the first Y above light-blocking tiles
+ * (0 for an empty column, capped at 127). */
 public interface PePopulationWorld {
     default String loadVillageState(String key) { return null; }
     default void saveVillageState(String key,String state) {
@@ -12,6 +12,10 @@ public interface PePopulationWorld {
     default void spawnVillager(int x,int y,int z,int profession,String stableKey) {
         throw new UnsupportedOperationException("Persistent PE villager identity is unavailable");
     }
+    default void beginLiquidTicks(int chunkX,int chunkZ) {}
+    default void finishLiquidTicks(int chunkX,int chunkZ) {}
+    default void scheduleLiquidTick(int x,int y,int z,int id,int level) {}
+    default void tickStructureLiquid(int x,int y,int z,int id) {}
     int getBlock(int x, int y, int z);
     void setBlock(int x, int y, int z, int id, int data);
     int surfaceY(int x, int z);

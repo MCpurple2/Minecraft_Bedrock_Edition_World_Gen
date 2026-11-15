@@ -1,7 +1,11 @@
 package net.mcpe.worldgen.fabric;
 
 import net.mcpe.worldgen.core.PePopulationWorld;
+import net.mcpe.worldgen.core.PeLiquidTicks;
+import net.mcpe.worldgen.core.PeSprings;
+import net.mcpe.worldgen.core.PeRandom;
 import net.mcpe.worldgen.core.PeWorldGenerator;
+import net.mcpe.worldgen.core.PeSurfacePatches;
 import net.minecraft.world.StructureWorldAccess;
 import net.minecraft.world.LightType;
 import net.minecraft.util.math.BlockPos;
@@ -28,15 +32,24 @@ import java.util.HashMap;
 
 /** The only population code which knows Minecraft/Fabric types. */
 final class FabricPopulationWorld implements PePopulationWorld {
+    private PeLiquidTicks liquids;
     private final StructureWorldAccess world;
     private final PeWorldGenerator core;
     private final Map<Long,int[]> biomeAreas=new HashMap<>();
     private final Map<Long,Integer> columnHeights=new HashMap<>();
     FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core){this.world=world;this.core=core;}
+    @Override public void beginLiquidTicks(int cx,int cz){liquids=new PeLiquidTicks(this,cx,cz);}
+    @Override public void finishLiquidTicks(int cx,int cz){liquids.drain();}
+    @Override public void scheduleLiquidTick(int x,int y,int z,int id,int level){liquids.schedule(x,y,z,id,level);}
+    @Override public void tickStructureLiquid(int x,int y,int z,int id){
+        // StructurePiece::placeBlock seeds a separate MT for its immediate tick.
+        if(id==10)PeSprings.spreadFire(this,new PeRandom(0x88f9fa*x+0xef88b*y+z),x,y,z);
+        liquids.tick(x,y,z,id,0);
+    }
     @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&core.isInsideChunk(x >> 4, z >> 4);}
     @Override public int getBlock(int x,int y,int z){
         if(y<0||y>=128)return 0;
-        if(!isInside(x,y,z))return 95;
+        if(!isInside(x,y,z))return 0;
         return LegacyBlocks.id(world.getBlockState(new BlockPos(x,y,z)));
     }
     @Override public int getData(int x,int y,int z){
@@ -60,14 +73,24 @@ final class FabricPopulationWorld implements PePopulationWorld {
         world.setBlockState(pos,state,2);
         long column=columnKey(x,z);
         Integer height=columnHeights.get(column);
-        if(height!=null){if(id==0&&y==height-1)columnHeights.remove(column);else if(id!=0&&y>=height)columnHeights.put(column,y+1);}
+        if (height != null && y < 127) {
+            boolean blocks = PeSurfacePatches.blocksSkylight(id);
+            if (!blocks && y == height - 1) columnHeights.remove(column);
+            else if (blocks && y >= height) columnHeights.put(column, y + 1);
+        }
         if(id==53||id==67||id==109||id==128||id==134||id==135||id==136||id==163||id==164||id==85||id==101||id==102||id==139)
             world.getChunk(x>>4,z>>4).markBlockForPostProcessing(pos);
     }
     private static long columnKey(int x,int z){return ((long)x<<32)|(z&0xffffffffL);}
     @Override public int surfaceY(int x,int z){
         long key=columnKey(x,z);Integer cached=columnHeights.get(key);if(cached!=null)return cached;
-        int height=0;for(int y=127;y>=0;y--)if(getBlock(x,y,z)!=0){height=y+1;break;}
+        int height = 0;
+        for (int y = 126; y >= 0; y--) {
+            if (PeSurfacePatches.blocksSkylight(getBlock(x,y,z))) {
+                height = y + 1;
+                break;
+            }
+        }
         columnHeights.put(key,height);return height;
     }
     @Override public int biomeAt(int x,int z){

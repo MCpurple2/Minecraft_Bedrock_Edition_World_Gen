@@ -14,6 +14,7 @@ public final class PeWorldGenerator {
     private final boolean old;
     public record Spawn(int x, int y, int z) {}
     private final boolean useSpawnBounds;
+    private final boolean nativeBiomeSeeds;
     private final long worldSeed;
     private Spawn initialSpawn;
     private final PeCaves caves;
@@ -32,8 +33,13 @@ public final class PeWorldGenerator {
     }
 
     public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds) {
+        this(seed, old, useSpawnBounds, true);
+    }
+
+    public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds) {
         this.old = old;
         this.useSpawnBounds = useSpawnBounds;
+        this.nativeBiomeSeeds = nativeBiomeSeeds;
         this.worldSeed = seed;
         caves = old ? null : new PeCaves(seed);
         PeRandom random = new PeRandom(seed);
@@ -45,12 +51,16 @@ public final class PeWorldGenerator {
         new PeOctaveNoise(random, 10);
         depth = new PeOctaveNoise(random, 16);
         new PeOctaveNoise(random, 8);
-        biomes = new PeBiomes(Integer.toUnsignedLong((int) seed), old);
+        biomes = new PeBiomes(seed, old, nativeBiomeSeeds);
     }
 
+    PeBiomes biomes() { return biomes; }
     public int biomeAt(int x, int z) { return biomes.biomeAt(x, z); }
     public synchronized Spawn initialSpawn() {
-        if (initialSpawn == null) initialSpawn = new PeBiomes(worldSeed, old, true).initialSpawn();
+        if (initialSpawn == null) {
+            PeBiomes spawnBiomes = nativeBiomeSeeds ? biomes : new PeBiomes(worldSeed, old, true);
+            initialSpawn = spawnBiomes.initialSpawn();
+        }
         return initialSpawn;
     }
 
@@ -68,7 +78,6 @@ public final class PeWorldGenerator {
     public synchronized byte[] generateChunk(int chunkX, int chunkZ) {
         byte[] blocks = new byte[16 * 16 * HEIGHT];
         if (!isInsideChunk(chunkX, chunkZ)) {
-            java.util.Arrays.fill(blocks, (byte)95); // PE invisible bedrock -> adapter barrier
             return blocks;
         }
         float[] densities = densities(chunkX, chunkZ);

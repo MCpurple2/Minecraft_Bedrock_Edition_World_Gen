@@ -27,6 +27,7 @@ public final class PeBiomeSource extends BiomeSource {
     ).apply(instance, PeBiomeSource::new));
     private final boolean old;
     private final Map<Integer, RegistryEntry<Biome>> palette = new LinkedHashMap<>();
+    private final RegistryEntry<Biome> voidBiome;
     private volatile PeWorldGenerator core;
     private final Map<Long, int[]> areas = new LinkedHashMap<>(256, 0.75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, int[]> eldest) { return size() > 256; }
@@ -34,6 +35,7 @@ public final class PeBiomeSource extends BiomeSource {
 
     public PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old) {
         this.old = old;
+        voidBiome = lookup(biomes, "the_void");
         String[] names = {
             "ocean", "plains", "desert", "windswept_hills", "forest", "taiga", "swamp", "river",
             "nether_wastes", "the_end", "frozen_ocean", "frozen_river", "snowy_plains", "snowy_plains",
@@ -59,11 +61,15 @@ public final class PeBiomeSource extends BiomeSource {
     private void map(RegistryEntryLookup<Biome> registry, int id, String name) { palette.put(id, lookup(registry, name)); }
     synchronized void attach(PeWorldGenerator generator) { core = generator; areas.clear(); }
     @Override protected MapCodec<? extends BiomeSource> getCodec() { return CODEC; }
-    @Override protected Stream<RegistryEntry<Biome>> biomeStream() { return palette.values().stream().distinct(); }
+    @Override protected Stream<RegistryEntry<Biome>> biomeStream() {
+        Stream<RegistryEntry<Biome>> inside = palette.values().stream().distinct();
+        return old ? Stream.concat(inside, Stream.of(voidBiome)) : inside;
+    }
     @Override public synchronized RegistryEntry<Biome> getBiome(int x, int y, int z, MultiNoiseUtil.MultiNoiseSampler noise) {
         PeWorldGenerator generator = core;
         if (generator == null) return palette.get(1);
         int chunkX = x >> 2, chunkZ = z >> 2;
+        if (!generator.isInsideChunk(chunkX, chunkZ)) return voidBiome;
         long key = ((long)chunkX << 32) | (chunkZ & 0xffffffffL);
         int[] area = areas.computeIfAbsent(key, ignored -> generator.biomeArea(chunkX << 4, chunkZ << 4, 16, 16));
         int id = area[(x & 3) * 4 + (z & 3) * 64];

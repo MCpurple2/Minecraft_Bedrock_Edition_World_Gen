@@ -40,10 +40,12 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public static final MapCodec<PeChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         BiomeSource.CODEC.fieldOf("biome_source").forGetter(PeChunkGenerator::getBiomeSource),
         Codec.BOOL.optionalFieldOf("old", false).forGetter(generator -> generator.old),
-        Codec.BOOL.optionalFieldOf("pe_spawn", false).forGetter(PeChunkGenerator::usesPeSpawn)
+        Codec.BOOL.optionalFieldOf("pe_spawn", false).forGetter(PeChunkGenerator::usesPeSpawn),
+        Codec.BOOL.optionalFieldOf("native_biome_seeds", false).forGetter(generator -> generator.nativeBiomeSeeds)
     ).apply(instance, PeChunkGenerator::new));
     private final boolean old;
     private final boolean peSpawn;
+    private final boolean nativeBiomeSeeds;
     private volatile PeWorldGenerator engine;
     private volatile long worldSeed;
     private volatile PePopulation population;
@@ -52,9 +54,14 @@ public final class PeChunkGenerator extends ChunkGenerator {
     };
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn) {
+        this(biomeSource, old, peSpawn, false);
+    }
+
+    public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds) {
         super(biomeSource);
         this.old = old;
         this.peSpawn = peSpawn;
+        this.nativeBiomeSeeds = nativeBiomeSeeds;
     }
 
     public boolean usesPeSpawn() { return peSpawn; }
@@ -82,7 +89,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
-        engine = new PeWorldGenerator(seed, old, peSpawn);
+        engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds);
         population = new PePopulation(seed,old,engine);
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine);
         chunks.clear();

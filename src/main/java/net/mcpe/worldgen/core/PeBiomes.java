@@ -43,7 +43,7 @@ public final class PeBiomes {
     private final long seed;
     private final boolean old;
     public PeBiomes(long seed, boolean old) {
-        this(seed, old, false);
+        this(seed, old, true);
     }
 
     PeBiomes(long seed, boolean old, boolean nativeHillsSeeds) {

@@ -26,7 +26,10 @@ public final class PeStrongholds {
         boolean intersects(Box clip){for(var p:layout.pieces())if(p.box.intersects(clip))return true;return false;}
     }
     public PeStrongholds(long worldSeed) {
-        seed=Integer.toUnsignedLong((int)worldSeed);biomes=new PeBiomes(seed,false);
+        this(worldSeed, new PeBiomes(worldSeed, false));
+    }
+    PeStrongholds(long worldSeed, PeBiomes biomes) {
+        seed=Integer.toUnsignedLong((int)worldSeed);this.biomes=biomes;
         PeRandom r=new PeRandom(seed);multiplierX=(r.nextRawInt()>>>2)*2+1;multiplierZ=(r.nextRawInt()>>>2)*2+1;
         prefix="pe0111:stronghold:v1:"+Long.toUnsignedString(seed)+":";
     }

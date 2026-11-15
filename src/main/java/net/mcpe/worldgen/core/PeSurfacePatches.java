@@ -32,10 +32,22 @@ public final class PeSurfacePatches {
     public static int solidSurface(PePopulationWorld w,int x,int z) {
         return w.topSolidY(x,z,false);
     }
+    /** Nonzero entries of the PE 0.11.1 Tile::lightBlock table. The native
+     * heightmap includes leaves and water but omits flowers, grass and snow layers. */
+    public static boolean blocksSkylight(int id) {
+        return switch (id) {
+            case 1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,21,22,24,30,35,
+                41,42,43,45,46,47,48,49,56,57,58,61,62,73,74,79,80,82,86,87,89,
+                91,97,98,99,100,103,110,112,121,129,133,152,155,157,159,161,162,
+                170,172,173,174,243,245,246,247,248,249,255 -> true;
+            default -> false;
+        };
+    }
+    /** PE Material flag at offset 0x0d, used to validate lake walls and the solid surface. */
     public static boolean solid(int id) {
         return switch(id) {
-            case 0,6,8,9,10,11,27,30,31,32,37,38,39,40,50,51,59,63,65,66,68,
-                78,83,104,105,106,111,127,141,142,175 -> false;
+            case 0,6,8,9,10,11,27,31,32,37,38,39,40,50,51,59,65,66,
+                78,83,104,105,106,111,127,141,142,175,244 -> false;
             default -> true;
         };
     }

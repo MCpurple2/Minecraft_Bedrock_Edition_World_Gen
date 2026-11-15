@@ -49,7 +49,7 @@ public final class PeTrees {
     public static float treeDensity(int id){
         if(id==132)return 1; if(id==162)return 0; if(id==163||id==164)return 2;
         int b=id>=128?id-128:id;
-        return switch(b){case 1->.05f;case 4,18,27,28->10;case 29->-999;case 5,19,30,31,32,33->10;case 21,22->25;case 23->2;case 6->2;case 34->3;case 35,36->1;case 38->5;case 2,16,17,25,26,37,39->-999;case 14,15->-100;default->0;};
+        return switch(b){case 1->.05f;case 4,18,27,28->10;case 29->-999;case 5,19,30,31,32,33->10;case 21,22->25;case 23->2;case 6->2;case 20,34->3;case 35,36->1;case 38->5;case 2,16,17,25,26,37,39->-999;case 14,15->-100;default->0;};
     }
     public static int treesPerChunk(int id){return (int)treeDensity(id);}
     public static void beforeDecoration(PePopulationWorld w,PeRandom r,int id,int x,int z,boolean old){

@@ -4,7 +4,7 @@ package net.mcpe.worldgen.core;
  * The immediate LiquidTileDynamic::tick is specialized to the source-level
  * spring invariant: above/below rock, exactly three rock sides and one air side.
  * Consequently slope-distance selection can only write that one open side.
- * Subsequent queued liquid ticks are intentionally separate from this first tick. */
+ * The outlet enters the population queue and continues flowing after decoration. */
 public final class PeSprings {
     private PeSprings() {}
     private static final int[][] SIDES={{-1,0},{1,0},{0,-1},{0,1}};
@@ -31,11 +31,15 @@ public final class PeSprings {
         // Dynamic source data=0 calls _setStatic before checking side spread.
         w.setBlock(x,y,z,flowingId+1,0);
         int px=x+SIDES[open][0],pz=z+SIDES[open][1],id=w.getBlock(px,y,pz);
-        if(id==0||id==51)w.setBlock(px,y,pz,flowingId,flowingId==8?1:2);
+        if(id==0||id==51){
+            int level=flowingId==8?1:2;
+            w.setBlock(px,y,pz,flowingId,level);
+            w.scheduleLiquidTick(px,y,pz,flowingId,level);
+        }
         return true;
     }
     /** LiquidTile::_trySpreadFire 002e2074, local generation queue flag+0x14=0. */
-    private static void spreadFire(PePopulationWorld w,PeRandom r,int x,int y,int z) {
+    public static void spreadFire(PePopulationWorld w,PeRandom r,int x,int y,int z) {
         for(int i=0;i<10;i++) {
             int px=x+r.nextInt(5)-2,py=y+r.nextInt(5)-2,pz=z+r.nextInt(5)-2;
             if(!flammable(w.getBlock(px,py,pz)))continue;

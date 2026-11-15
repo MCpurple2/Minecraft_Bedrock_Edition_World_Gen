@@ -52,7 +52,7 @@ public final class PeCustomizeScreen extends Screen {
         parent.getWorldCreator().applyModifier((registries, dimensions) -> {
             var previous = dimensions.dimensions().get(DimensionOptions.OVERWORLD);
             if (previous == null) throw new IllegalStateException("Missing overworld in Pocket Edition Alpha preset");
-            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true);
+            var generator = new PeChunkGenerator(new PeBiomeSource(registries.getOrThrow(RegistryKeys.BIOME), selectedOld), selectedOld, true, true);
             var updated = new LinkedHashMap<>(dimensions.dimensions());
             // Preserve the PE dimension type (0..127) and all other dimensions.
             updated.put(DimensionOptions.OVERWORLD, new DimensionOptions(previous.dimensionTypeEntry(), generator));

@@ -18,9 +18,9 @@ public final class PePopulation {
     private final Map<Integer,PeDecorationSettings> biomeSettings=new HashMap<>();
     public PePopulation(long seed,boolean old,PeWorldGenerator core) {
         this.seed=seed;this.old=old;this.core=core;
-        villages=new PeVillageGenerator(seed,old);
+        villages=new PeVillageGenerator(seed,old,core.biomes());
         mineshafts=new PeMineshafts(seed);
-        strongholds=new PeStrongholds(seed);
+        strongholds=new PeStrongholds(seed,core.biomes());
     }
     /** Native explicitly resets to this seed before structures and again before biome decoration. */
     public static int seed(long worldSeed,int chunkX,int chunkZ) {
@@ -30,6 +30,7 @@ public final class PePopulation {
     }
     public void populate(PePopulationWorld world,int cx,int cz,boolean structures) {
         if(!core.isInsideChunk(cx,cz))return;
+        world.beginLiquidTicks(cx,cz);
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);
@@ -58,7 +59,10 @@ public final class PePopulation {
                 count=(int)(random.nextFloat()*settings.treeDensity);
                 grass=biomeSettings.computeIfAbsent(1,PeDecorationSettings::fromBiome).grass;
             }
-            else count=(int)settings.treeDensity+Math.max(random.nextInt(10)-7,0);
+            else if (settings.treeDensity < 1.0f) {
+                // ARM 0x18669c: sparse biomes make a single fractional-density roll.
+                count = random.nextFloat() < settings.treeDensity ? 1 : 0;
+            } else count=(int)settings.treeDensity+Math.max(random.nextInt(10)-7,0);
             for(int i=0;i<count;i++) {
                 PeTrees.Selected tree=PeTrees.select(random,biome);
                 int x=bx+1+random.nextInt(14),z=bz+1+random.nextInt(14),y=world.surfaceY(x,z);
@@ -73,8 +77,7 @@ public final class PePopulation {
         PeSprings.decorate(world,random,bx,bz);
         PeBiomePopulation.postDecorate(world,random,biome,bx,bz,old);
         PeSnow.apply(world,bx,bz);
-        // Native foliage-color byte generation and subsequent queued liquid ticks
-        // are not replaced with modern Java decoration or fluid ticks.
+        world.finishLiquidTicks(cx,cz);
     }
     private void lakes(PePopulationWorld w,PeRandom r,int biome,int bx,int bz) {
         if(biome!=2&&biome!=17&&(r.nextRawInt()&3)==0) {

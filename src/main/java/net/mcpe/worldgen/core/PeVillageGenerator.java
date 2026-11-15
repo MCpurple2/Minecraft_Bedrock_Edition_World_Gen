@@ -31,7 +31,10 @@ public final class PeVillageGenerator {
     }
     public PeVillageGenerator(long seed){this(seed,false);}
     public PeVillageGenerator(long seed,boolean old) {
-        worldSeed=Integer.toUnsignedLong((int)seed);biomes=new PeBiomes(worldSeed,old);
+        this(seed, old, new PeBiomes(seed, old));
+    }
+    PeVillageGenerator(long seed, boolean old, PeBiomes biomes) {
+        worldSeed=Integer.toUnsignedLong((int)seed);this.biomes=biomes;
         prefix="pe0111:village:v1:"+Long.toUnsignedString(worldSeed)+":"+(old?"old":"infinite")+":";
     }
     /** Caller supplies the native postProcess RNG; painting advances it. */
@@ -142,6 +145,7 @@ public final class PeVillageGenerator {
         public int getBlock(int x,int y,int z){return delegate.getBlock(x,y,z);}
         public int getData(int x,int y,int z){return delegate.getData(x,y,z);}
         public void setBlock(int x,int y,int z,int id,int data){delegate.setBlock(x,y,z,id,data);}
+        public void tickStructureLiquid(int x,int y,int z,int id){delegate.tickStructureLiquid(x,y,z,id);}
         public int surfaceY(int x,int z){return delegate.surfaceY(x,z);}
         public int biomeAt(int x,int z){return delegate.biomeAt(x,z);}
         public boolean isInside(int x,int y,int z){return delegate.isInside(x,y,z);}

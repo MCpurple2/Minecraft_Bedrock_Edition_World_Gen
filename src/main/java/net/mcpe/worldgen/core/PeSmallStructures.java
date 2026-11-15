@@ -5,11 +5,7 @@ public final class PeSmallStructures {
     private PeSmallStructures() {}
 
     static boolean solid(int id) {
-        return switch (id) {
-            case 0, 6, 8, 9, 10, 11, 27, 30, 31, 32, 37, 38, 39, 40, 50, 51, 59,
-                 63, 65, 66, 68, 78, 83, 104, 105, 106, 111, 127, 141, 142, 175 -> false;
-            default -> true;
-        };
+        return PeSurfacePatches.solid(id);
     }
 
     public static boolean dungeon(PePopulationWorld world, PeRandom random, int x, int y, int z) {

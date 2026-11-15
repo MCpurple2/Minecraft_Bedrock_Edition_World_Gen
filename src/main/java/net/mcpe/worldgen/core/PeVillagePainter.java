@@ -124,7 +124,10 @@ public final class PeVillagePainter {
                 case 53,67 -> id=128;
             }
         }
+        boolean source = (id==8 || id==10) && meta==0;
+        boolean changed = source && (world.getBlock(wx,wy,wz)!=id || world.getData(wx,wy,wz)!=meta);
         world.setBlock(wx,wy,wz,id,meta);
+        if (changed) world.tickStructureLiquid(wx,wy,wz,id);
     }
 
     private int get(int x,int y,int z) {
