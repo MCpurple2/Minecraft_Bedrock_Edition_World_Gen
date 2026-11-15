@@ -3,6 +3,7 @@
     "minecraft:overworld": {
       "generator": {
         "type": "pe_worldgen:pe_0111",
+        "pe_spawn": true,
         "old": true,
         "biome_source": {
           "type": "pe_worldgen:pe_0111",

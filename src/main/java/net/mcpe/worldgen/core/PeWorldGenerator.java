@@ -12,6 +12,10 @@ public final class PeWorldGenerator {
     public static final int HEIGHT = 128;
     public static final int SEA_LEVEL = 63;
     private final boolean old;
+    public record Spawn(int x, int y, int z) {}
+    private final boolean useSpawnBounds;
+    private final long worldSeed;
+    private Spawn initialSpawn;
     private final PeCaves caves;
     private final PeBiomes biomes;
     private final PeOctaveNoise lower, upper, selector, depth;
@@ -24,7 +28,13 @@ public final class PeWorldGenerator {
     };
 
     public PeWorldGenerator(long seed, boolean old) {
+        this(seed, old, true);
+    }
+
+    public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds) {
         this.old = old;
+        this.useSpawnBounds = useSpawnBounds;
+        this.worldSeed = seed;
         caves = old ? null : new PeCaves(seed);
         PeRandom random = new PeRandom(seed);
         lower = new PeOctaveNoise(random, 16);
@@ -39,16 +49,25 @@ public final class PeWorldGenerator {
     }
 
     public int biomeAt(int x, int z) { return biomes.biomeAt(x, z); }
+    public synchronized Spawn initialSpawn() {
+        if (initialSpawn == null) initialSpawn = new PeBiomes(worldSeed, old, true).initialSpawn();
+        return initialSpawn;
+    }
+
+    public boolean isInsideChunk(int chunkX, int chunkZ) {
+        if (!old) return true;
+        int centerX = useSpawnBounds ? initialSpawn().x() >> 4 : 0;
+        int centerZ = useSpawnBounds ? initialSpawn().z() >> 4 : 0;
+        return chunkX >= centerX - 8 && chunkX <= centerX + 7
+            && chunkZ >= centerZ - 8 && chunkZ <= centerZ + 7;
+    }
     public int[] biomeArea(int x, int z, int width, int height) {
         return biomes.zoomedArea(x, z, width, height);
     }
 
     public synchronized byte[] generateChunk(int chunkX, int chunkZ) {
         byte[] blocks = new byte[16 * 16 * HEIGHT];
-        // Native WorldLimitChunkSource uses a 16x16 chunk window around the initial
-        // PE spawn chunk. This prototype anchors that window at (0,0) until the PE
-        // spawn-selection pass is ported; it must not be advertised as seed parity.
-        if (old && (chunkX < -8 || chunkX > 7 || chunkZ < -8 || chunkZ > 7)) {
+        if (!isInsideChunk(chunkX, chunkZ)) {
             java.util.Arrays.fill(blocks, (byte)95); // PE invisible bedrock -> adapter barrier
             return blocks;
         }

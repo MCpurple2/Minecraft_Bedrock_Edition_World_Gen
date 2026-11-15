@@ -5,12 +5,16 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.mcpe.worldgen.core.PeWorldGenerator;
 import net.mcpe.worldgen.core.PePopulation;
+import net.mcpe.worldgen.core.PeInitialPlayer;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.block.BlockState;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.structure.StructureTemplateManager;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.HeightLimitView;
 import net.minecraft.world.StructureWorldAccess;
 import net.minecraft.world.biome.source.BiomeAccess;
@@ -35,9 +39,11 @@ import java.util.concurrent.CompletableFuture;
 public final class PeChunkGenerator extends ChunkGenerator {
     public static final MapCodec<PeChunkGenerator> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
         BiomeSource.CODEC.fieldOf("biome_source").forGetter(PeChunkGenerator::getBiomeSource),
-        Codec.BOOL.optionalFieldOf("old", false).forGetter(generator -> generator.old)
+        Codec.BOOL.optionalFieldOf("old", false).forGetter(generator -> generator.old),
+        Codec.BOOL.optionalFieldOf("pe_spawn", false).forGetter(PeChunkGenerator::usesPeSpawn)
     ).apply(instance, PeChunkGenerator::new));
     private final boolean old;
+    private final boolean peSpawn;
     private volatile PeWorldGenerator engine;
     private volatile long worldSeed;
     private volatile PePopulation population;
@@ -45,9 +51,30 @@ public final class PeChunkGenerator extends ChunkGenerator {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, byte[]> eldest) { return size() > 128; }
     };
 
-    public PeChunkGenerator(BiomeSource biomeSource, boolean old) {
+    public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn) {
         super(biomeSource);
         this.old = old;
+        this.peSpawn = peSpawn;
+    }
+
+    public boolean usesPeSpawn() { return peSpawn; }
+
+    public BlockPos initialSpawnAnchor() {
+        var spawn = engine().initialSpawn();
+        return new BlockPos(spawn.x(), spawn.y(), spawn.z());
+    }
+
+    public Vec3d initialPlayerPosition(ServerWorld world, BlockPos anchor) {
+        int x = anchor.getX();
+        int z = anchor.getZ();
+        var terrain = new FabricPopulationWorld(world, engine());
+        int y = PeInitialPlayer.feetY(anchor.getY(), () -> {
+            int solidY = terrain.topSolidY(x, z, true) - 1;
+            return solidY >= 2 ? solidY : -1;
+        },
+            feet -> world.getBlockCollisions(null, new Box(x, feet, z, x + 0.6F, feet + 1.8F, z + 0.6F))
+                .iterator().hasNext());
+        return new Vec3d(x + 0.5, y, z + 0.5);
     }
 
     public boolean isOld() { return old; }
@@ -55,7 +82,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
-        engine = new PeWorldGenerator(seed, old);
+        engine = new PeWorldGenerator(seed, old, peSpawn);
         population = new PePopulation(seed,old,engine);
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine);
         chunks.clear();
@@ -98,7 +125,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         if(current==null)throw new IllegalStateException("PE population used before world seed initialization");
         boolean enabled=world.toServerWorld().getServer().getSaveProperties().getGeneratorOptions().shouldGenerateStructures();
         // Serialize PE's neighboring feature writes without holding the base-generation lock.
-        synchronized(current){current.populate(new FabricPopulationWorld(world,engine(),old),chunk.getPos().x,chunk.getPos().z,enabled);}
+        synchronized(current){current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);}
     }
     @Override public void populateEntities(ChunkRegion region) {}
     @Override public void addStructureReferences(StructureWorldAccess world, StructureAccessor structures, Chunk chunk) {}

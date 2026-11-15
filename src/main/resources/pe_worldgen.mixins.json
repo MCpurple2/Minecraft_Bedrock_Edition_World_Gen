@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "net.mcpe.worldgen.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": ["MinecraftServerMixin", "PrepareSpawnTaskMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

@@ -43,6 +43,10 @@ public final class PeBiomes {
     private final long seed;
     private final boolean old;
     public PeBiomes(long seed, boolean old) {
+        this(seed, old, false);
+    }
+
+    PeBiomes(long seed, boolean old, boolean nativeHillsSeeds) {
         this.seed=Integer.toUnsignedLong((int)seed); this.old=old;
         L land=layer(1,"island",null);
         land=zoom(2000,land,true); land=layer(1,"add",land); land=zoom(2001,land,false);
@@ -54,7 +58,10 @@ public final class PeBiomes {
         L riverInit=layer(100,"riverInit",land);
         L biome=layer(200,"biome",land); biome=magnify(1000,biome,2);
         biome=layer(1000,"edge",biome);
-        L hillsRiver=magnify(1000,riverInit,2);
+        // RegionHillsLayer inherits Layer::init, which only visits its primary
+        // parent. Both private zooms of its second parent keep world seed zero.
+        L hillsRiver = new L(1001, "zoom", riverInit, null, nativeHillsSeeds);
+        hillsRiver = new L(1001, "zoom", hillsRiver, null, nativeHillsSeeds);
         biome=new L(1000,"hills",biome,hillsRiver);
         int size=old?2:4;
         L river=magnify(1000,riverInit,2); river=magnify(1000,river,size);
@@ -65,6 +72,37 @@ public final class PeBiomes {
         raw=new L(100,"mix",biome,river); zoomed=layer(10,"voronoi",raw);
     }
     public synchronized int[] rawArea(int x,int z,int width,int height) { return raw.area(x,z,width,height); }
+    /** BiomeSource::findValidSpawnPosition reads a 10x10 result as a linear buffer.
+     * The ten entries after it still belong to SmoothLayer's 12x12 input. */
+    synchronized PeWorldGenerator.Spawn initialSpawn() {
+        for (int origin = 0; ; origin += 10) {
+            int[] cells = raw.area(origin, 0, 10, 10);
+            int[] smoothInput = null;
+            // The north neighbor in row zero reads the caller's stack. In the
+            // ServerLevel -> Level -> LevelData chain only column 3 can match:
+            // its word is saved r8, the generator type (1 for infinite).
+            if (!old && spawnBiome(cells[3]) && spawnBiome(cells[2])
+                    && spawnBiome(cells[4]) && spawnBiome(cells[13])) {
+                return new PeWorldGenerator.Spawn((origin + 3) * 4, 128, 0);
+            }
+            for (int i = 10; i < cells.length; i++) {
+                if (!spawnBiome(cells[i]) || !spawnBiome(cells[i - 1]) || !spawnBiome(cells[i - 10])) continue;
+                if (i >= 90 && smoothInput == null) smoothInput = raw.p.p.area(origin - 1, -1, 12, 12);
+                int east = i == 99 ? smoothInput[100] : cells[i + 1];
+                int south = i >= 90 ? smoothInput[i + 10] : cells[i + 10];
+                if (spawnBiome(east) && spawnBiome(south)) {
+                    return new PeWorldGenerator.Spawn((origin + i % 10) * 4, 128, i / 10 * 4);
+                }
+            }
+        }
+    }
+
+    private static boolean spawnBiome(int id) {
+        return switch (id) {
+            case 1, 4, 5, 18, 19, 21, 22 -> true;
+            default -> false;
+        };
+    }
     public synchronized int[] zoomedArea(int x,int z,int width,int height) { return zoomed.area(x,z,width,height); }
     public int biomeAt(int x,int z) { return zoomedArea(x,z,1,1)[0]; }
     private L layer(long salt,String kind,L p) { return new L(salt,kind,p,null); }
@@ -91,7 +129,8 @@ public final class PeBiomes {
     }
     private final class L {
         final String kind; final L p,q; final long world;
-        L(long salt,String kind,L p,L q){this.kind=kind;this.p=p;this.q=q;long b=salt;for(int i=0;i<3;i++)b=mix(b,salt);long w=seed;for(int i=0;i<3;i++)w=mix(w,b);world=w;}
+        L(long salt,String kind,L p,L q){this(salt,kind,p,q,false);}
+        L(long salt,String kind,L p,L q,boolean unseeded){this.kind=kind;this.p=p;this.q=q;long b=salt;for(int i=0;i<3;i++)b=mix(b,salt);long w=seed;for(int i=0;i<3;i++)w=mix(w,b);world=unseeded?0:w;}
         R random(int x,int z){return new R(world,x,z);}
         int[] area(int x,int z,int w,int h){
             if(w<1||h<1)return new int[0];

@@ -29,7 +29,7 @@ public final class PePopulation {
         return (chunkX*a+chunkZ*b)^(int)worldSeed;
     }
     public void populate(PePopulationWorld world,int cx,int cz,boolean structures) {
-        if(old&&(cx< -8||cx>=8||cz< -8||cz>=8))return;
+        if(!core.isInsideChunk(cx,cz))return;
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);

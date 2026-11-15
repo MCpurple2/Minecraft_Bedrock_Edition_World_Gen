@@ -7,6 +7,6 @@
   "description": "Experimental PE 0.11.1 world generator port. See research notes for fidelity limits.",
   "environment": "*",
   "entrypoints": { "main": ["net.mcpe.worldgen.fabric.PeWorldgenMod"] },
-  "mixins": ["pe_worldgen.client.mixins.json"],
+  "mixins": ["pe_worldgen.mixins.json", "pe_worldgen.client.mixins.json"],
   "depends": { "fabricloader": ">=0.18.0", "fabric-api": "*", "minecraft": "~1.21.11", "java": ">=21" }
 }

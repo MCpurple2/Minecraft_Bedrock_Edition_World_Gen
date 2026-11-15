@@ -30,11 +30,10 @@ import java.util.HashMap;
 final class FabricPopulationWorld implements PePopulationWorld {
     private final StructureWorldAccess world;
     private final PeWorldGenerator core;
-    private final boolean old;
     private final Map<Long,int[]> biomeAreas=new HashMap<>();
     private final Map<Long,Integer> columnHeights=new HashMap<>();
-    FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core,boolean old){this.world=world;this.core=core;this.old=old;}
-    @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&(!old||(x>=-128&&x<128&&z>=-128&&z<128));}
+    FabricPopulationWorld(StructureWorldAccess world,PeWorldGenerator core){this.world=world;this.core=core;}
+    @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&core.isInsideChunk(x >> 4, z >> 4);}
     @Override public int getBlock(int x,int y,int z){
         if(y<0||y>=128)return 0;
         if(!isInside(x,y,z))return 95;
