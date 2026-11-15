@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 2.3 IWBUMS
+Pocket Edition World Generator · Build 2.4 IWBUMS
 Minecraft Java 1.21.11 · Fabric · PE Alpha 0.11.1 主世界
+
+Build 2.4 的主世界可在 Y=-64 至 319 建造。PE 地形维持 Y=0 至 127；两侧在生成时为空气。自定义界面增加分类预设、生物群系预览、快速导入导出和数据包导出。
 
 Build 2.3 在新建 PE 世界中统一地形、装饰和结构选址使用的丘陵群系随机状态。修正稀疏群系种树抽样、PE 地表高度查询和湖壁材料判定。铁匠铺和泉水在生成时处理液体更新。旧存档沿用原先持久化的结构选址，已有区块保留原貌。
 

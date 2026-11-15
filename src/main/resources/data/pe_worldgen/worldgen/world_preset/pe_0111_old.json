@@ -11,7 +11,7 @@
           "old": true
         }
       },
-      "type": "pe_worldgen:overworld"
+      "type": "minecraft:overworld"
     },
     "minecraft:the_nether": {
       "generator": {

@@ -1,17 +1,16 @@
 PE Worldgen: experimental PE 0.11.1 research port
 
-Fabric adapter written for this project. Moderner Beta was consulted for its
-separation of historical generation from modern Minecraft integration; it is
-not a runtime dependency. No Moderner Beta implementation was copied into
-this adapter. The Gradle wrapper launcher is from the Moderner Beta repository
-(Gradle's Apache-2.0-licensed wrapper).
+The world customization GUI adapts the client-side layout, preset navigation,
+and settings actions from Moderner Beta. These adaptations use the upstream MIT version. See LICENSES/Moderner-Beta-MIT.txt.
+The Gradle wrapper launcher is from the Moderner Beta repository (Gradle's
+Apache-2.0-licensed wrapper).
 
 This project does not bundle the Minecraft Pocket Edition APK or native library.
 See the core source and research notes for the actual reconstruction status.
 
 Project license: Apache-2.0 for original contributions. See LICENSE.
 The corresponding project source and Gradle build files for this release are
-distributed in the source archive directory 'source/Build 2.3 IWBUMS/'.
+distributed in the source archive directory 'source/Build 2.4 IWBUMS/'.
 
 Moderner Beta licensing and credits
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/87c015b63e8618795dbeafe41166a3818eb81f8f/README.md#license

@@ -139,8 +139,8 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override public void setStructureStarts(DynamicRegistryManager registries, StructurePlacementCalculator placements,
         StructureAccessor structures, Chunk chunk, StructureTemplateManager templates, RegistryKey<World> dimension) {}
 
-    @Override public int getWorldHeight() { return 128; }
-    @Override public int getMinimumY() { return 0; }
+    @Override public int getWorldHeight() { return 384; }
+    @Override public int getMinimumY() { return -64; }
     @Override public int getSeaLevel() { return PeWorldGenerator.SEA_LEVEL; }
 
     @Override
@@ -149,16 +149,20 @@ public final class PeChunkGenerator extends ChunkGenerator {
         for (int y = 127; y >= 0; y--) {
             if (type.getBlockPredicate().test(column.getState(y))) return y + 1;
         }
-        return 0;
+        return world.getBottomY();
     }
 
     @Override
     public VerticalBlockSample getColumnSample(int x, int z, HeightLimitView world, NoiseConfig noise) {
         byte[] data = generate(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
-        BlockState[] states = new BlockState[128];
+        BlockState[] states = new BlockState[world.getHeight()];
+        java.util.Arrays.fill(states, net.minecraft.block.Blocks.AIR.getDefaultState());
         int offset = (Math.floorMod(x, 16) * 16 + Math.floorMod(z, 16)) * 128;
-        for (int y = 0; y < 128; y++) states[y] = LegacyBlocks.state(Byte.toUnsignedInt(data[offset + y]));
-        return new VerticalBlockSample(0, states);
+        int bottom = world.getBottomY();
+        for (int y = Math.max(0, bottom); y < Math.min(PeWorldGenerator.HEIGHT, bottom + states.length); y++) {
+            states[y - bottom] = LegacyBlocks.state(Byte.toUnsignedInt(data[offset + y]));
+        }
+        return new VerticalBlockSample(bottom, states);
     }
 
     @Override public void appendDebugHudText(List<String> text, NoiseConfig noise, BlockPos pos) {
