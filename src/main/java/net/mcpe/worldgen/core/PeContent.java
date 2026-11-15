@@ -17,6 +17,12 @@ public enum PeContent {
     DUNGEONS("classic"),
     HUTS("scary"),
     QUARTZ("redstone"),
+    JUNGLE_TREES("adventure"),
+    MEGA_JUNGLE_TREES("adventure"),
+    ACACIA_TREES("changed_world"),
+    DARK_OAK_TREES("changed_world"),
+    MEGA_PINE_TREES("changed_world"),
+    MEGA_SPRUCE_TREES("changed_world"),
     MONUMENTS("bountiful"),
     FOSSILS("frostburn"),
     MAGMA("frostburn"),
@@ -46,13 +52,19 @@ public enum PeContent {
     TUFF_BLOBS("caves_cliffs_i"),
     DEEPSLATE_BLOBS("caves_cliffs_i"),
     GLOW_LICHEN("caves_cliffs_i");
+    public static final Set<PeContent> NATURAL_TREES = Set.of(JUNGLE_TREES, MEGA_JUNGLE_TREES,
+        ACACIA_TREES, DARK_OAK_TREES, MEGA_PINE_TREES, MEGA_SPRUCE_TREES);
+
     public final String group;
     PeContent(String group) { this.group=group; }
     public String key() { return name().toLowerCase(Locale.ROOT); }
 
     public static Set<PeContent> defaults(PeRelease release, boolean finite) {
         var flags = EnumSet.noneOf(PeContent.class);
-        if (release.hasWorldTypes()) flags.addAll(Set.of(VILLAGES, DESERT_VILLAGES, DESERT_WELLS));
+        if (release.hasWorldTypes()) {
+            flags.addAll(Set.of(VILLAGES, DESERT_VILLAGES, DESERT_WELLS));
+            flags.addAll(NATURAL_TREES);
+        }
         if (release.compareTo(PeRelease.V0_12_3)>=0) flags.addAll(Set.of(FORTRESS, QUARTZ));
         if (!finite) {
             flags.addAll(Set.of(STRONGHOLDS, MINESHAFTS, DUNGEONS));

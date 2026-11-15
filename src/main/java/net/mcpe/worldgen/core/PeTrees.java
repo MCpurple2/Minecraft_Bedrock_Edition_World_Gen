@@ -1,5 +1,7 @@
 package net.mcpe.worldgen.core;
 
+import java.util.Set;
+
 /** PE 0.11.1 tree selection and feature ports. Native pseudocode anchors are
  * recorded per method. Fifteen feature types match original ARM execution for
  * three flat-ground sample seeds, including block metadata and following RNG.
@@ -42,6 +44,50 @@ public final class PeTrees {
         if(base==37||base==38||base==39)return Selected.OAK;
         return generic(r);
     }
+    static Selected select(PeRandom random, int biome, PeAlphaClimate.Type alpha, Set<PeContent> flags) {
+        if (alpha != null) return selectAlpha(random, alpha, flags);
+        return allowed(select(random, biome), flags);
+    }
+
+    private static Selected allowed(Selected tree, Set<PeContent> flags) {
+        return switch (tree) {
+            case ACACIA -> flags.contains(PeContent.ACACIA_TREES) ? tree : Selected.OAK;
+            case ROOF -> flags.contains(PeContent.DARK_OAK_TREES) ? tree : Selected.OAK;
+            case JUNGLE, GROUND_BUSH -> flags.contains(PeContent.JUNGLE_TREES) ? tree : Selected.OAK;
+            case MEGA_JUNGLE -> flags.contains(PeContent.MEGA_JUNGLE_TREES) ? tree : Selected.OAK;
+            case MEGA_PINE -> flags.contains(PeContent.MEGA_PINE_TREES) ? tree : Selected.PINE;
+            case MEGA_SPRUCE -> flags.contains(PeContent.MEGA_SPRUCE_TREES) ? tree : Selected.SPRUCE;
+            default -> tree;
+        };
+    }
+
+    private static Selected selectAlpha(PeRandom random, PeAlphaClimate.Type biome, Set<PeContent> flags) {
+        switch (biome) {
+            case FOREST, SEASONAL_FOREST -> {
+                if (flags.contains(PeContent.DARK_OAK_TREES) && random.nextInt(3) == 0) return Selected.ROOF;
+                if (biome == PeAlphaClimate.Type.FOREST && random.nextInt(5) == 0) return Selected.BIRCH;
+            }
+            case TAIGA -> {
+                if (flags.contains(PeContent.MEGA_PINE_TREES) || flags.contains(PeContent.MEGA_SPRUCE_TREES))
+                    return allowed(select(random, 32), flags);
+                return random.nextInt(3) == 0 ? Selected.PINE : Selected.SPRUCE;
+            }
+            case SAVANNA -> {
+                if (flags.contains(PeContent.ACACIA_TREES)) return select(random, 35);
+            }
+            case RAINFOREST -> {
+                if (flags.contains(PeContent.JUNGLE_TREES) || flags.contains(PeContent.MEGA_JUNGLE_TREES)) {
+                    Selected candidate = select(random, 21);
+                    return candidate == Selected.FANCY ? Selected.OAK : allowed(candidate, flags);
+                }
+            }
+            default -> { }
+        }
+        // Both Biome and RainforestBiome draw once before returning TreeFeature.
+        random.nextRawInt();
+        return Selected.OAK;
+    }
+
     private static Selected generic(PeRandom r){return r.nextInt(10)==0?Selected.FANCY:Selected.OAK;}
     public static boolean selectAndPlace(PePopulationWorld w,PeRandom r,int id,int x,int y,int z){return select(r,id).place(w,r,x,y,z);}
     /** Native BiomeDecorator+0xcc is float, not integer. Constructor evidence in

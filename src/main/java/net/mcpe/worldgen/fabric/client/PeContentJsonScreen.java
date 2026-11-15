@@ -2,6 +2,7 @@ package net.mcpe.worldgen.fabric.client;
 
 import com.google.gson.*;
 import net.mcpe.worldgen.core.PeContent;
+import net.mcpe.worldgen.core.PeRelease;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -13,8 +14,8 @@ import net.minecraft.client.gui.screen.Screen;
 final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls()
         .setStrictness(Strictness.STRICT).create();
-    PeContentJsonScreen(Screen parent, PeContentSettings settings, Consumer<PeContentSettings> onDone) {
-        super(parent, PeCustomizeScreen.label("content"), format(settings), PeContentJsonScreen::parse, onDone);
+    PeContentJsonScreen(Screen parent, PeRelease release, PeContentSettings settings, Consumer<PeContentSettings> onDone) {
+        super(parent, PeCustomizeScreen.label("content"), format(settings), text -> parse(text,release), onDone);
     }
 
     // Iteration order is the order shown in the editor, from earliest to latest release.
@@ -24,6 +25,7 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
         ADVENTURE_II("adventure","adventure_update_part_ii_features"),
         SCARY("scary","scary_update_features"),
         REDSTONE("redstone","redstone_update_features"),
+        CHANGED_WORLD("changed_world","changed_world_update_features"),
         BOUNTIFUL("bountiful","bountiful_update_features"),
         FROSTBURN("frostburn","frostburn_update_features"),
         EXPLORATION("exploration","exploration_update_features"),
@@ -67,10 +69,20 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
         throw new JsonParseException(key);
     }
 
-    static PeContentSettings parse(String text) {
+    static PeContentSettings parse(String text, PeRelease release) {
         var json = GSON.fromJson(text, JsonObject.class);
         if (json == null) throw new JsonParseException("Invalid settings");
         boolean legacy = json.has("features");
+        // Expand the grouped editor format used through Build 3.7 using the selected PE release.
+        if (!legacy && !json.has(Update.CHANGED_WORLD.key)) {
+            var adventure = group(json,Update.ADVENTURE_II.key);
+            var trees = new JsonObject();
+            for (var f : PeContent.NATURAL_TREES) {
+                if (f.group.equals(Update.CHANGED_WORLD.group)) trees.addProperty(f.key(),release.hasWorldTypes());
+                else if (!adventure.has(f.key())) adventure.addProperty(f.key(),release.hasWorldTypes());
+            }
+            json.add(Update.CHANGED_WORLD.key,trees);
+        }
         if (json.size() != (legacy ? 2 : Update.values().length - (json.has(Update.CAVES_CLIFFS_I.key) ? 0 : 1)) + (json.has("allow_nether_portals") ? 1 : 0)) throw new JsonParseException("Invalid groups");
         var water = EnumSet.noneOf(Aquatic.class);
         var aquatic = group(json,legacy ? "aquatic_features" : Update.AQUATIC.key);
@@ -79,9 +91,10 @@ final class PeContentJsonScreen extends PeSettingsJsonScreen<PeContentSettings> 
 
         var enabled=EnumSet.noneOf(PeContent.class);
         if (legacy) {
+            if (release.hasWorldTypes()) enabled.addAll(PeContent.NATURAL_TREES);
             var fields=group(json,"features");
-            if (fields.size()!=java.util.Arrays.stream(PeContent.values()).filter(f -> !f.group.equals(Update.CAVES_CLIFFS_I.group)).count()) throw new JsonParseException("Invalid feature list");
-            for (var f : PeContent.values()) if (!f.group.equals(Update.CAVES_CLIFFS_I.group) && flag(fields,f.key())) enabled.add(f);
+            if (fields.size()!=java.util.Arrays.stream(PeContent.values()).filter(f -> !PeContent.NATURAL_TREES.contains(f) && !f.group.equals(Update.CAVES_CLIFFS_I.group)).count()) throw new JsonParseException("Invalid feature list");
+            for (var f : PeContent.values()) if (!PeContent.NATURAL_TREES.contains(f) && !f.group.equals(Update.CAVES_CLIFFS_I.group) && flag(fields,f.key())) enabled.add(f);
         } else {
             for (var update : Update.values()) {
                 if (update == Update.AQUATIC || update == Update.CAVES_CLIFFS_I && !json.has(update.key)) continue;

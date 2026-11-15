@@ -12,12 +12,19 @@ import java.util.Set;
 import net.minecraft.util.StringIdentifiable;
 
 public record PeContentSettings(Set<Aquatic> water, boolean villages, boolean bees, boolean netherUpdate,
-                                Optional<Boolean> portalOverride, Optional<Set<PeContent>> selection) {
+                                Optional<Boolean> portalOverride, Optional<Set<PeContent>> selection, boolean explicitTreeSettings) {
     public PeContentSettings(Set<Aquatic> water, boolean villages, boolean bees, boolean netherUpdate, Optional<Boolean> portals) {
-        this(water,villages,bees,netherUpdate,portals,Optional.empty());
+        this(water,villages,bees,netherUpdate,portals,Optional.empty(),false);
     }
     public PeContentSettings resolve(PeRelease release, boolean finite) {
-        if (selection.isPresent()) return this;
+        if (selection.isPresent()) {
+            if (explicitTreeSettings) return this;
+            var migrated = EnumSet.noneOf(PeContent.class);
+            migrated.addAll(flags());
+            if (release.hasWorldTypes() && java.util.Collections.disjoint(migrated,PeContent.NATURAL_TREES))
+                migrated.addAll(PeContent.NATURAL_TREES);
+            return configured(water,migrated,portalOverride);
+        }
         var flags=PeContent.defaults(release,finite);
         if (villages) flags.addAll(Set.of(PeContent.MODERN_VILLAGES,PeContent.SNOWY,PeContent.OUTPOSTS,PeContent.BAMBOO,PeContent.PANDAS));
         if (bees) flags.addAll(Set.of(PeContent.NESTS,PeContent.GIANT_BERRIES));
@@ -26,7 +33,7 @@ public record PeContentSettings(Set<Aquatic> water, boolean villages, boolean be
     }
     public static PeContentSettings configured(Set<Aquatic> water,Set<PeContent> flags,Optional<Boolean> portals) {
         return new PeContentSettings(water,flags.contains(PeContent.MODERN_VILLAGES),flags.contains(PeContent.NESTS),
-            flags.contains(PeContent.JE_NETHER),portals,Optional.of(Set.copyOf(flags)));
+            flags.contains(PeContent.JE_NETHER),portals,Optional.of(Set.copyOf(flags)),true);
     }
     public Set<PeContent> flags() { return selection.orElseThrow(); }
     public boolean has(PeContent item) { return flags().contains(item) && item.available(flags()); }
@@ -67,9 +74,10 @@ public record PeContentSettings(Set<Aquatic> water, boolean villages, boolean be
         Codec.BOOL.optionalFieldOf("buzzy_bees", false).forGetter(PeContentSettings::bees),
         Codec.BOOL.optionalFieldOf("nether_update", false).forGetter(PeContentSettings::netherUpdate),
         Codec.BOOL.optionalFieldOf("allow_nether_portals").forGetter(PeContentSettings::portalOverride),
+        Codec.BOOL.optionalFieldOf("explicit_tree_settings", false).forGetter(PeContentSettings::explicitTreeSettings),
         FEATURE_CODEC.listOf().optionalFieldOf("features").forGetter(s -> s.selection.map(v -> v.stream().sorted().toList()))
-    ).apply(i, (legacy, items, villages, bees, nether, portals, features) -> new PeContentSettings(
-        Set.copyOf(items.orElse(legacy ? LEGACY : List.of())), villages, bees, nether, portals,features.map(Set::copyOf))));
+    ).apply(i, (legacy, items, villages, bees, nether, portals, explicitTrees, features) -> new PeContentSettings(
+        Set.copyOf(items.orElse(legacy ? LEGACY : List.of())), villages, bees, nether, portals,features.map(Set::copyOf),explicitTrees)));
     public boolean overworldContent() { return !water.isEmpty() || villages || has(PeContent.BAMBOO) || has(PeContent.FOSSILS)
             || has(PeContent.OUTPOSTS) || has(PeContent.MANSIONS) || has(PeContent.OVERWORLD_PORTALS); }
 }

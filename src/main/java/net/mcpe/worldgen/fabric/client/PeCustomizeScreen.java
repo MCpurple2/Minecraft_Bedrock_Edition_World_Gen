@@ -116,7 +116,7 @@ public final class PeCustomizeScreen extends Screen {
             setting.active = enabled;
             var advanced = button(Text.literal(enabled ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
                 () -> client.setScreen(exclusive ? PeBedrockScreen.editor(this, bedrock, value -> bedrock = value)
-                    : new PeContentJsonScreen(this, settings, value -> settings = value)));
+                    : new PeContentJsonScreen(this, release, settings, value -> settings = value)));
             advanced.active = enabled;
             if (advanced.active) advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         }
@@ -133,7 +133,9 @@ public final class PeCustomizeScreen extends Screen {
         button(label("preview"), mid + 5, actions, half, () -> {
             long seed = GeneratorOptions.parseSeed(parent.getWorldCreator().getSeed())
                 .orElse(parent.getWorldCreator().getGeneratorOptionsHolder().generatorOptions().getSeed());
-            client.setScreen(new PeBiomePreviewScreen(this, seed, old, release, settings, bedrock));
+            var registries = parent.getWorldCreator().getGeneratorOptionsHolder().getCombinedRegistryManager();
+            var source = PeBiomeSource.preview(registries.getOrThrow(RegistryKeys.BIOME),seed,old,release,settings,bedrock);
+            client.setScreen(new PeBiomePreviewScreen(this,source,seed));
         });
         button(label("quick"), mid - half - 5, actions + 24, half,
             () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, bedrock, false)));

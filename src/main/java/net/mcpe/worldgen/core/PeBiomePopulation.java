@@ -28,13 +28,18 @@ public final class PeBiomePopulation {
         return 1;
     }
     public static void preDecorate(PePopulationWorld w,PeRandom r,int id,int bx,int bz,boolean old,PeDecorationSettings settings){
+        preDecorate(w,r,id,bx,bz,old,settings,PeContent.defaults(w.release(),old));
+    }
+
+    static void preDecorate(PePopulationWorld w,PeRandom r,int id,int bx,int bz,boolean old,
+                            PeDecorationSettings settings,java.util.Set<PeContent> flags) {
         int b=id>=128?id-128:id;
         PeBiomeExtras.pre(w,r,id,bx,bz,old);
         if(id==4||id==18||id==27||id==28||id==29||id==132){
             if(b==29)for(int gx=1;gx<17;gx+=4)for(int gz=1;gz<17;gz+=4){
                 int x=bx+gx+r.nextInt(3),z=bz+gz+r.nextInt(3),y=w.surfaceY(x,z);
                 if(r.nextInt(20)==0)PeTrees.hugeMushroom(w,r,x,y,z,-1);
-                else {PeTrees.select(r,id).place(w,r,x,y,z);if(!old)PePopulation.grassAroundTree(w,r,x,y,z,20);}
+                else {PeTrees.select(r,id,null,flags).place(w,r,x,y,z);if(!old)PePopulation.grassAroundTree(w,r,x,y,z,20);}
             }
             int count=r.nextInt(5)-(id==132?1:3);
             for(int i=0;i<count;i++){

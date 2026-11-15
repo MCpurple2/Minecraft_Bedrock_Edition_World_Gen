@@ -1,19 +1,31 @@
-Bedrock Edition World Generator (also distributed as PE Worldgen)
+Bedrock Edition World Generator
+Build 3.8 IWBUMS
 
-Original contributions to this project are licensed under the Apache License,
-Version 2.0 (Apache-2.0), reproduced below. Third-party material retains its
-own copyright notices and license terms.
+Original contributions are licensed under the Apache License, Version 2.0
+(Apache-2.0). The full text follows this notice. Third-party material retains
+its own copyright notices and license terms.
 
-For material adapted from Moderner Beta, the applicable license follows the
-upstream revision from which the material was taken:
+Moderner Beta
+The upstream licensing boundary is commit
+55519d1b2154c12662154ecd1111678febe303db. Material taken from that commit
+or an earlier revision is licensed under the GNU Lesser General Public
+License, version 3. The LGPLv3 text and the GPLv3 terms it incorporates are
+in LICENSES/Moderner-Beta-LGPL-3.0.txt and LICENSES/GPL-3.0.txt.
+Material taken from later upstream revisions is licensed under MIT.
 
-  * Up to and including 55519d1b2154c12662154ecd1111678febe303db:
-    GNU Lesser General Public License, version 3. See
-    LICENSES/Moderner-Beta-LGPL-3.0.txt and LICENSES/GPL-3.0.txt.
-  * After that commit: MIT. See LICENSES/Moderner-Beta-MIT.txt for
-    the upstream copyright notice, permission grant and disclaimer.
+The biome preview in Build 3.8 adapts ModernBetaBiomePreviewScreen,
+LayerRandom and the registered preview colors in SettingsComponentTypes
+from revision 87c015b63e8618795dbeafe41166a3818eb81f8f (MIT).
+Copyright (c) 2024-2025 BlueStaggo, 2021 B3spectacled.
+The full notice and license are in LICENSES/Moderner-Beta-MIT.txt.
 
-See NOTICE.txt for the components used in this build and upstream references.
+Cubiomes
+Moderner Beta credits its default biome preview palette to Cubiomes,
+revision e61f90580cbdd883214a8054670dacae655e59c0 (MIT).
+Copyright (c) 2020 Cubitect.
+The full notice and license are in LICENSES/Cubiomes-MIT.txt.
+
+See NOTICE.txt for component details, adaptations and upstream source links.
 
 
                                  Apache License

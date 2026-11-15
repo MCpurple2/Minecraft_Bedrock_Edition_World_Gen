@@ -37,7 +37,7 @@ final class PeContentScreen extends Screen {
         var body = DirectionalLayoutWidget.vertical().spacing(5);
         body.getMainPositioner().alignHorizontalCenter();
         buttons.clear();
-        for (String group : List.of("classic","adventure_part1","adventure","scary","redstone","bountiful","frostburn","exploration"))
+        for (String group : List.of("classic","adventure_part1","adventure","scary","redstone","changed_world","bountiful","frostburn","exploration"))
             section(body,group,w);
         heading(body, "aquatic_group");
         dependent.clear();

@@ -1,20 +1,43 @@
-PE Worldgen: experimental PE 0.11.1 research port
+Bedrock Edition World Generator
+Build 3.8 IWBUMS for Minecraft Java Edition 1.21.11 (Fabric)
 
-The world customization GUI adapts the client-side layout, preset navigation,
-settings actions, JSON settings editor, and preset list from Moderner Beta. The finite map uses its
-WorldBorderLocation tests and out-of-bounds PRE biome injection rule. These adaptations use the upstream MIT version. See LICENSES/Moderner-Beta-MIT.txt.
-The Gradle wrapper launcher is from the Moderner Beta repository (Gradle's
-Apache-2.0-licensed wrapper).
+Original project contributions are licensed under Apache-2.0. See LICENSE.
 
-This project does not bundle the Minecraft Pocket Edition APK or native library.
-See the core source and research notes for the actual reconstruction status.
+Moderner Beta
+Copyright (c) 2024-2025 BlueStaggo, 2021 B3spectacled.
 
-Project license: Apache-2.0 for original contributions. See LICENSE.
-The corresponding project source and Gradle build files for this release are
-distributed in the source archive directory 'source/Build 3.6 IWBUMS/'.
+The world customization screens adapt Moderner Beta's layout, preset list,
+navigation, settings actions and JSON editor. The finite world boundary
+adapts WorldBorderLocation and the PRE out-of-bounds biome injection rule.
 
-Moderner Beta licensing and credits
+Build 3.8 adapts ModernBetaBiomePreviewScreen, the Voronoi magnifier's
+LayerRandom sampler and the registered preview colors in SettingsComponentTypes
+from revision 87c015b63e8618795dbeafe41166a3818eb81f8f. The port connects
+the preview to the selected PE biome source and finite world boundary, and
+adapts client texture management and PNG capture to Fabric 1.21.11.
+These adaptations use the MIT-licensed upstream revision. The full copyright
+notice, permission grant and disclaimer are in LICENSES/Moderner-Beta-MIT.txt.
+
+Upstream source and credits
+https://github.com/Nostalgica-Reverie/moderner-beta/tree/87c015b63e8618795dbeafe41166a3818eb81f8f
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/87c015b63e8618795dbeafe41166a3818eb81f8f/README.md#license
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/55519d1/LICENSE
 https://github.com/Nostalgica-Reverie/moderner-beta/blob/87c015b63e8618795dbeafe41166a3818eb81f8f/LICENSE
 https://github.com/b3spectacled/modern-beta-fabric/wiki/Credits
+
+Cubiomes
+Copyright (c) 2020 Cubitect.
+
+Moderner Beta attributes the preview palette to the following Cubiomes
+revision. The PE Alpha entries in this mod map the upstream colors to the
+mod's biome identifiers. See LICENSES/Cubiomes-MIT.txt for the full notice.
+https://github.com/Cubitect/cubiomes/blob/e61f90580cbdd883214a8054670dacae655e59c0/util.c#L316
+https://github.com/Cubitect/cubiomes/blob/e61f90580cbdd883214a8054670dacae655e59c0/LICENSE
+
+Gradle wrapper
+The Gradle wrapper launcher in the source distribution comes from the
+Moderner Beta repository. The Gradle wrapper is licensed under Apache-2.0.
+
+The corresponding project source and Gradle build files are distributed in
+source/Build 3.8 IWBUMS/. The distribution contains no Minecraft Pocket
+Edition APK or native library.

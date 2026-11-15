@@ -27,6 +27,7 @@ public final class PeBiomeSource extends BiomeSource {
         Codec.BOOL.optionalFieldOf("old", false).forGetter(source -> source.old)
     ).apply(instance, PeBiomeSource::new));
     private final boolean old;
+    private int tileShift;
     private final Map<Long,PeAlphaClimate.Type[]> alphaChunks = new LinkedHashMap<>(256,.75f,true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long,PeAlphaClimate.Type[]> entry) { return size() > 256; }
     };
@@ -41,7 +42,12 @@ public final class PeBiomeSource extends BiomeSource {
     };
 
     public PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old) {
+        this(biomes,old,2);
+    }
+
+    private PeBiomeSource(RegistryEntryLookup<Biome> biomes, boolean old, int tileShift) {
         this.old = old;
+        this.tileShift = tileShift;
         for (var type : PeAlphaClimate.Type.values())
             extra.put(type.path(),biomes.getOrThrow(RegistryKey.of(RegistryKeys.BIOME,Identifier.of("pe_worldgen",type.path()))));
         voidBiome = lookup(biomes, "the_void");
@@ -67,6 +73,29 @@ public final class PeBiomeSource extends BiomeSource {
         map(biomes, 165, "eroded_badlands");
     }
 
+    public static PeBiomeSource preview(RegistryEntryLookup<Biome> biomes, long seed, boolean old,
+                                       net.mcpe.worldgen.core.PeRelease release, PeContentSettings settings,
+                                       PeBedrockSettings bedrock) {
+        var source = new PeBiomeSource(biomes,old,4);
+        var generator = new PeWorldGenerator(seed,old,true,true,release);
+        bedrock.configure(generator,true);
+        source.configure(settings.resolve(release,old));
+        source.attach(generator,seed);
+        return source;
+    }
+
+    // A distant view skips most points in a large biome tile. Use smaller tiles
+    // there so zooming out does not generate thousands of discarded samples per pixel.
+    public synchronized void setPreviewStride(int stride) {
+        int shift = Math.clamp(4 - Integer.numberOfTrailingZeros(stride), 0, 4);
+        if (tileShift == shift) return;
+        tileShift = shift;
+        areas.clear();
+        alphaChunks.clear();
+    }
+
+    public net.mcpe.worldgen.core.PeWorldBorderLocation previewBounds() { return core.finiteBorder(); }
+
     private static RegistryEntry<Biome> lookup(RegistryEntryLookup<Biome> registry, String path) {
         return registry.getOrThrow(RegistryKey.of(RegistryKeys.BIOME, Identifier.ofVanilla(path)));
     }
@@ -91,10 +120,11 @@ public final class PeBiomeSource extends BiomeSource {
         if (border != null && border.outsideBiomeCell(x, z)) return voidBiome;
         var alpha = generator.alphaClimate();
         if (alpha != null) {
-            int cx = x >> 2, cz = z >> 2;
+            int cx = x >> tileShift, cz = z >> tileShift;
+            int span = 4 << tileShift;
             long key = ((long)cx << 32) | Integer.toUnsignedLong(cz);
-            var chunk = alphaChunks.computeIfAbsent(key, unused -> alpha.area(cx<<4,cz<<4,16,16));
-            return extra.get(chunk[(x&3)*4+(z&3)*64].path());
+            var chunk = alphaChunks.computeIfAbsent(key, unused -> alpha.area(cx*span,cz*span,span,span));
+            return extra.get(chunk[tileIndex(x,z)].path());
         }
         int id = sample(x,z);
         String replacement=climate.biome(id,x,z,options,this::sample);
@@ -102,9 +132,15 @@ public final class PeBiomeSource extends BiomeSource {
     }
 
     private int sample(int x,int z) {
-        int chunkX=x>>2, chunkZ=z>>2;
+        int chunkX=x>>tileShift, chunkZ=z>>tileShift;
+        int span = 4 << tileShift;
         long key=((long)chunkX<<32)|Integer.toUnsignedLong(chunkZ);
-        int[] area=areas.computeIfAbsent(key, ignored -> core.biomeArea(chunkX<<4,chunkZ<<4,16,16));
-        return area[(x&3)*4+(z&3)*64];
+        int[] area=areas.computeIfAbsent(key, ignored -> core.biomeArea(chunkX*span,chunkZ*span,span,span));
+        return area[tileIndex(x,z)];
+    }
+
+    private int tileIndex(int x,int z) {
+        int mask = (1 << tileShift) - 1;
+        return 4 * (x & mask) + (4 << tileShift) * (4 * (z & mask));
     }
 }

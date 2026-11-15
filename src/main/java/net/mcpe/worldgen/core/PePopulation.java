@@ -48,6 +48,8 @@ public final class PePopulation {
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);
+        var climate = core.alphaClimate();
+        var alpha = climate == null ? null : climate.area(bx+15,bz+15,1,1)[0];
         int chunkSeed=seed(seed,cx,cz);
         boolean later=core.release().compareTo(PeRelease.V0_12_3) >= 0;
         PeRandom random=new PeRandom(chunkSeed);
@@ -68,7 +70,7 @@ public final class PePopulation {
         if(later)PeSnow.freeze(world,bx,bz);
         random.setSeed(chunkSeed);
         PeDecorationSettings settings=biomeSettings.computeIfAbsent(biome,PeDecorationSettings::fromBiome);
-        PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings);
+        PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings,flags);
         PeOres.decorate(world,random,bx,bz);
         if (core.release().compareTo(PeRelease.V0_10_2) >= 0) PeBiomeExtras.mesaOres(world,random,biome,bx,bz);
         PeSurfacePatches.decorate(world,random,bx,bz,settings.sand,settings.clay,settings.gravel);
@@ -84,7 +86,7 @@ public final class PePopulation {
                 count = random.nextFloat() < settings.treeDensity ? 1 : 0;
             } else count=(int)settings.treeDensity+Math.max(random.nextInt(10)-7,0);
             for(int i=0;i<count;i++) {
-                PeTrees.Selected tree=PeTrees.select(random,biome);
+                PeTrees.Selected tree=PeTrees.select(random,biome,alpha,flags);
                 int first=random.nextInt(14)+1,second=random.nextInt(14)+1;
                 boolean zFirst=core.release().drawsZFirst();
                 int x=bx+(zFirst?second:first),z=bz+(zFirst?first:second),y=world.surfaceY(x,z);
