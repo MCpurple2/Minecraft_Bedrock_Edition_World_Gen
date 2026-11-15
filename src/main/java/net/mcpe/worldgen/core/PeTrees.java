@@ -76,11 +76,25 @@ public final class PeTrees {
     }
     private static boolean airLeaves(int id){return id==0||id==18||id==161;}
     private static boolean leafFree(int id){return airLeaves(id)||id==8||id==9||id==31||id==32||id==37||id==38||id==39||id==40||id==78||id==106||id==175;}
+    // Tile::solid as read by TreeFeature::placeLeaf in 0.11.1.
+    private static boolean canopyCanReplace011(int id) {
+        return switch (id) {
+            case 0,6,8,9,10,11,18,20,26,27,30,31,32,37,38,39,40,44,50,51,52,53,54,59,60,
+                 63,64,65,66,67,68,71,78,79,81,83,85,92,95,96,101,102,104,105,106,107,108,
+                 109,111,114,120,126,127,128,134,135,136,139,141,142,156,158,161,163,164,
+                 171,174,175,183,184,185,186,187,198,244 -> true;
+            default -> false;
+        };
+    }
     private static boolean free(int id){return airLeaves(id)||id==2||id==3;}
     private static void leaf(PePopulationWorld w,int x,int y,int z,int meta){if(y>=0&&y<128&&leafFree(w.getBlock(x,y,z)))w.setBlock(x,y,z,18,meta);}
     private static boolean prepare(PePopulationWorld w,int x,int y,int z,int h){
-        if(y<1||y+h>127)return false;int ground=w.getBlock(x,y-1,z);if(ground!=2&&ground!=3)return false;
-        for(int yy=y;yy<=y+h+1;yy++){int rad=yy==y?0:yy>=y+h-1?2:1;for(int xx=x-rad;xx<=x+rad;xx++)for(int zz=z-rad;zz<=z+rad;zz++)if(yy>=128||!free(w.getBlock(xx,yy,zz)))return false;}return true;
+        if(y<1||y+h>127)return false;int ground=w.getBlock(x,y-1,z);
+        boolean saplingSoil = w.release().compareTo(PeRelease.V0_14_3) >= 0;
+        if(ground!=2 && ground!=3 && !(saplingSoil && (ground==60 || ground==243)))return false;
+        for(int yy=y;yy<=y+h+1;yy++){int rad=yy==y?0:yy>=y+h-1?2:1;for(int xx=x-rad;xx<=x+rad;xx++)for(int zz=z-rad;zz<=z+rad;zz++)if(yy>=128||!free(w.getBlock(xx,yy,zz)))return false;}
+        if (saplingSoil) w.setBlock(x,y-1,z,3,0);
+        return true;
     }
     /** TreeFeature::place 00252ad4. Crown corner draws are consumed even for
      * the omitted top corners; trunk is placed first, as in the native code. */
@@ -91,7 +105,11 @@ public final class PeTrees {
         for(int yy=y+h-3;yy<=y+h;yy++){int dy=yy-(y+h),radius=1-dy/2;
             for(int xx=x-radius;xx<=x+radius;xx++)for(int zz=z-radius;zz<=z+radius;zz++){
                 boolean corner=Math.abs(xx-x)==radius&&Math.abs(zz-z)==radius;
-                if(!corner||(r.nextRawInt()&1)!=0&&dy!=0)leaf(w,xx,yy,zz,data);
+                if (corner && ((r.nextRawInt() & 1)==0 || dy==0)) continue;
+                int block = w.getBlock(xx,yy,zz);
+                if (w.release()==PeRelease.V0_11_1 ? canopyCanReplace011(block) : leafFree(block)) {
+                    w.setBlock(xx,yy,zz,18,data);
+                }
             }
         }
         if(vines){

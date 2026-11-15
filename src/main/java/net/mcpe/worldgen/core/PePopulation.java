@@ -86,7 +86,7 @@ public final class PePopulation {
             for(int i=0;i<count;i++) {
                 PeTrees.Selected tree=PeTrees.select(random,biome);
                 int first=random.nextInt(14)+1,second=random.nextInt(14)+1;
-                boolean zFirst=core.release().compareTo(PeRelease.V0_15_10)>=0;
+                boolean zFirst=core.release().drawsZFirst();
                 int x=bx+(zFirst?second:first),z=bz+(zFirst?first:second),y=world.surfaceY(x,z);
                 tree.place(world,random,x,y,z);
                 if(!old)grassAroundTree(world,random,x,y,z,23);
@@ -111,15 +111,6 @@ public final class PePopulation {
         }
     }
     public static void grassAroundTree(PePopulationWorld w,PeRandom r,int x,int y,int z,int attempts) {
-        int id;
-        while(y>0&&((id=w.getBlock(x,y,z))==0||id==18||id==161))y--;
-        for(int i=0;i<attempts;i++) {
-            int px=x+r.nextInt(3)-r.nextInt(3),py=y+(r.nextRawInt()&3)-(r.nextRawInt()&3),pz=z+r.nextInt(3)-r.nextInt(3);
-            if(w.isInside(px,py,pz)&&w.getBlock(px,py,pz)==0) {
-                int ground=w.getBlock(px,py-1,pz);
-                if(ground==2||ground==3||ground==60)w.setBlock(px,py,pz,31,1);
-            }
-        }
+        PeVegetation.tallGrass(w,r,x,y,z,1,attempts,3);
     }
 }
-

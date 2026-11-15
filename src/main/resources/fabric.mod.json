@@ -3,7 +3,7 @@
   "id": "pe_worldgen",
   "license": "Apache-2.0",
   "version": "${version}",
-  "name": "Pocket Edition World Generator",
+  "name": "Bedrock Edition World Generator",
   "description": "Experimental Pocket Edition Alpha world generators. See research notes for fidelity limits.",
   "environment": "*",
   "entrypoints": { "main": ["net.mcpe.worldgen.fabric.PeWorldgenMod"], "client": ["net.mcpe.worldgen.fabric.client.PeWorldgenClient"] },

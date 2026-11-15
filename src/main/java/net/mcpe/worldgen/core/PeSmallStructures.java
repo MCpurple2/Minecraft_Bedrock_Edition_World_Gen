@@ -55,12 +55,15 @@ public final class PeSmallStructures {
         while (y > 0 && world.getBlock(baseX,y,baseZ) == 0) y--;
         int baseY = y-4;
         boolean[] mask = new boolean[2048];
+        boolean shiftedCenters = world.release().compareTo(PeRelease.V0_13_2) >= 0;
         int blobs = random.nextInt(4)+4;
         for (int i = 0; i < blobs; i++) {
             float sx = random.nextFloat()*6+3, sy = random.nextFloat()*4+2, sz = random.nextFloat()*6+3;
-            float offsetX = (-1-sx*0.5f) - (14-sx)*random.nextFloat();
-            float centerY = (sy*0.5f+2) + (4-sy)*random.nextFloat();
-            float offsetZ = (-1-sz*0.5f) - (14-sz)*random.nextFloat();
+            float rx = random.nextFloat(), ry = random.nextFloat(), rz = random.nextFloat();
+            // From 0.13 the ellipsoid centers are sampled from the local origin.
+            float offsetX = shiftedCenters ? -(15-sx*0.5f)*rx : (-1-sx*0.5f) - (14-sx)*rx;
+            float centerY = shiftedCenters ? (6-sy*0.5f)*ry : (sy*0.5f+2) + (4-sy)*ry;
+            float offsetZ = shiftedCenters ? -(15-sz*0.5f)*rz : (-1-sz*0.5f) - (14-sz)*rz;
             float ix = 1/(sx*0.5f), iy = 1/(sy*0.5f), iz = 1/(sz*0.5f);
             for (int xx=1; xx<15; xx++) for (int zz=1; zz<15; zz++) {
                 float dx=(xx+offsetX)*ix, dz=(zz+offsetZ)*iz;

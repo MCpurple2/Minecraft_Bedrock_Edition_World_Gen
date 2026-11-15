@@ -17,16 +17,30 @@ public final class PeOres {
         span(w,r,baseX,baseZ,2,14,0,8,0,32);
         span(w,r,baseX,baseZ,8,73,0,7,0,16);
         span(w,r,baseX,baseZ,1,56,0,7,0,16);
-        int x=baseX+(r.nextRawInt()&15), y=r.nextInt(16)+r.nextInt(16), z=baseZ+(r.nextRawInt()&15);
-        place(w,r,x,y,z,21,0,6);
+        int first = r.nextInt(16);
+        int y = r.nextInt(16) + r.nextInt(16);
+        int last = r.nextInt(16);
+        boolean zFirst = w.release().drawsZFirst();
+        place(w, r, baseX + (zFirst ? last : first), y, baseZ + (zFirst ? first : last), 21, 0, decoratorSize(w,6));
     }
     private static void span(PePopulationWorld w,PeRandom r,int bx,int bz,int count,int id,int data,int size,int min,int max) {
+        int nativeSize = decoratorSize(w,size);
         for(int i=0;i<count;i++) {
-            int x=bx+(r.nextRawInt()&15), y=min+r.nextInt(max-min), z=bz+(r.nextRawInt()&15);
-            place(w,r,x,y,z,id,data,size);
+            int first = r.nextInt(16);
+            int y = min + r.nextInt(max-min);
+            int last = r.nextInt(16);
+            boolean zFirst = w.release().drawsZFirst();
+            int x = bx + (zFirst ? last : first);
+            int z = bz + (zFirst ? first : last);
+            place(w,r,x,y,z,id,data,nativeSize);
         }
     }
+    // The 0.12 decorator increases each configured vein size alongside the exclusive step bound.
+    private static int decoratorSize(PePopulationWorld world, int originalSize) {
+        return world.release() == PeRelease.V0_11_1 ? originalSize : originalSize + 1;
+    }
     public static void place(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int size) {
+        boolean floorBounds = w.release().compareTo(PeRelease.V0_13_2) >= 0;
         boolean later = w.release() != PeRelease.V0_11_1;
         float angle=r.nextFloat()*32768.0f;
         float sin=PeMth.indexed((int)angle), cos=PeMth.indexed((int)(angle+16384.0f));
@@ -47,13 +61,13 @@ public final class PeOres {
             float thickness=(float)size*0.0625f*r.nextFloat();
             float radius=(thickness+PeMth.sin((t*3.1415927f)/(float)size)*thickness)*0.5f+0.5f;
             float reciprocal=1.0f/radius;
-            for(int xx=(int)(px-radius);xx<=(int)(px+radius);xx++) {
+            for(int xx=bound(px-radius, floorBounds);xx<=bound(px+radius, floorBounds);xx++) {
                 float dx=reciprocal*((float)xx+(0.5f-px)); dx*=dx;
                 if(dx>=1.0f)continue;
-                for(int yy=(int)(py-radius);yy<=(int)(py+radius);yy++) {
+                for(int yy=bound(py-radius, floorBounds);yy<=bound(py+radius, floorBounds);yy++) {
                     float dy=reciprocal*((float)yy+(0.5f-py)); float xy=dx+dy*dy;
                     if(xy>=1.0f)continue;
-                    for(int zz=(int)(pz-radius);zz<=(int)(pz+radius);zz++) {
+                    for(int zz=bound(pz-radius, floorBounds);zz<=bound(pz+radius, floorBounds);zz++) {
                         float dz=reciprocal*((float)zz+(0.5f-pz));
                         if(xy+dz*dz<1.0f && w.isInside(xx,yy,zz) && w.getBlock(xx,yy,zz)==substrate)
                             w.setBlock(xx,yy,zz,id,data);
@@ -61,5 +75,9 @@ public final class PeOres {
                 }
             }
         }
+    }
+    // BlockPos(Vec3) floors coordinates. The earlier scalar TileSource loops truncate.
+    private static int bound(float value, boolean floorBounds) {
+        return floorBounds ? (int)Math.floor(value) : (int)value;
     }
 }

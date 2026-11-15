@@ -1,5 +1,7 @@
-Pocket Edition World Generator · Build 3.4 IWBUMS
+Bedrock Edition World Generator Build 3.5 · IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.5 aligns the standard overworld ore vein sizes from Alpha 0.12.3, lake ellipsoid centers and ore coordinate rounding from 0.13.2, tree soil preparation from 0.14.3, and ore and plant offset draw order from 0.15.10. Tall grass in 0.15.10 and 0.16.2 uses the original input height for scattering. The 0.11.1 common tree canopy uses the native block replacement table. Seed 999 comparisons covered individual features on controlled terrain. Full populated chunks can still differ from PE.
 
 Build 3.4 将铅笔编辑器的配置按更新版本排列，旧式村庄键为 legacy_villages。可粘贴 Build 3.3 的编辑器 JSON。
 

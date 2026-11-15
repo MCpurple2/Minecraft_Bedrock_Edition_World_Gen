@@ -11,7 +11,11 @@ dependencies {
 }
 processResources {
     inputs.property 'version', project.version
-    filesMatching('fabric.mod.json') { expand version: project.version }
+    def displayBuild = project.version.toString().split(' ').take(2).join(' ')
+    filesMatching('fabric.mod.json') { expand version: project.version, displayBuild: displayBuild }
+    filesMatching('assets/pe_worldgen/lang/*.json') {
+        filter { line -> line.replace('@displayBuild@', displayBuild) }
+    }
 }
 tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
 java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21; withSourcesJar() }
@@ -20,4 +24,8 @@ java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaV
         from('LICENSE', 'NOTICE.txt')
         from('LICENSES') { into 'LICENSES' }
     }
+}
+tasks.named('remapJar') {
+    def buildTag = project.version.toString().replaceFirst('Build ', 'build').replace(' ', '-')
+    archiveFileName = "BEWorldgen-${buildTag}+${project.minecraft_version}-fabric.jar"
 }

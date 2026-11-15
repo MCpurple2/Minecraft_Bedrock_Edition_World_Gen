@@ -11,6 +11,8 @@ public enum PeRelease {
     private final String id;
     PeRelease(String id) { this.id = id; }
     public boolean hasWorldTypes() { return Integer.parseInt(id.split("\\.")[1]) >= 9; }
+    // ARM builds from 0.15 draw Z first in BlockPos constructors with randomized arguments.
+    boolean drawsZFirst() { return compareTo(V0_15_10) >= 0; }
     public String id() { return id; }
     public boolean supports(boolean finite) { return !finite || this == V0_11_1; }
     public String presetPath(boolean finite) {

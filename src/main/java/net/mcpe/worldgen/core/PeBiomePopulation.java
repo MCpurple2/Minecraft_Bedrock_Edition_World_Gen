@@ -63,7 +63,11 @@ public final class PeBiomePopulation {
     public static boolean doublePlant(PePopulationWorld w,PeRandom r,int x,int y,int z,int type){
         boolean success=false;
         for(int i=0;i<64;i++){
-            int px=x+(r.nextRawInt()&7)-(r.nextRawInt()&7),py=y+(r.nextRawInt()&3)-(r.nextRawInt()&3),pz=z+(r.nextRawInt()&7)-(r.nextRawInt()&7);
+            int first = r.nextInt(8)-r.nextInt(8);
+            int py = y+r.nextInt(4)-r.nextInt(4);
+            int last = r.nextInt(8)-r.nextInt(8);
+            boolean zFirst = w.release().drawsZFirst();
+            int px = x+(zFirst ? last : first), pz = z+(zFirst ? first : last);
             if(py<0||py>=126||w.getBlock(px,py,pz)!=0||w.getBlock(px,py+1,pz)!=0)continue;
             int floor=w.getBlock(px,py-1,pz);
             if(floor==2||floor==3||floor==60){w.setBlock(px,py,pz,175,type);w.setBlock(px,py+1,pz,175,8);success=true;}
