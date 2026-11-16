@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "pe_worldgen:block/cyan_rose"
+  }
+}

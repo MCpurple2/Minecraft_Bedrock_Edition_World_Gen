@@ -16,7 +16,7 @@ public final class PeVegetation {
             int x=bx+(r.nextRawInt()&15),z=bz+(r.nextRawInt()&15),y=randomHeight(w,r,x,z);
             int data=PeBiomePopulation.grassData(r,biome); tallGrass(w,r,x,y,z,data,90,8);
         }
-        for(int i=0;i<s.deadBush;i++){int x=bx+(r.nextRawInt()&15),z=bz+(r.nextRawInt()&15),y=randomHeight(w,r,x,z);scatter(w,r,x,descend(w,x,y,z),z,32,0,4,0);}
+        for(int i=0;i<s.deadBush;i++){int x=bx+(r.nextRawInt()&15),z=bz+(r.nextRawInt()&15),y=randomHeight(w,r,x,z);scatter(w,r,x,Math.max(0,descend(w,x,y,z)-1),z,32,0,4,0);}
         for(int i=0;i<s.lilies;i++){
             int x=bx+(r.nextRawInt()&15),z=bz+(r.nextRawInt()&15),y=randomHeight(w,r,x,z);
             while(y>0&&w.getBlock(x,y-1,z)==0)y--;scatter(w,r,x,y,z,111,0,10,0);
@@ -52,30 +52,42 @@ public final class PeVegetation {
         }
     }
     private static boolean water(int id){return id==8||id==9;}
-    private static boolean ground(int id){return id==2||id==3||id==60||id==243;}
+    static boolean ground(int id){return id==2||id==3||id==60||id==243;}
     private static boolean survive(PePopulationWorld w,int x,int y,int z,int id){
         int below=w.getBlock(x,y-1,z);
         if(id==111)return y>=0&&y<128&&water(below)&&w.getData(x,y-1,z)==0;
         if(id==39||id==40)return y>=0&&y<128&&(below==110||below==243||w.rawBrightness(x,y,z)<13&&w.solidTop(x,y-1,z));
-        if(id==32)return (below==12||below==159||below==172)&&(w.canSeeSky(x,y,z)||w.rawBrightness(x,y,z)>7);
+        if (id == 32) {
+            boolean podzol = below == 243 && w.release().compareTo(PeRelease.V0_12_3) >= 0;
+            return (below == 12 || below == 159 || below == 172 || podzol) && bushLight(w,x,y,z);
+        }
         if(id==31)return ground(below);
         if(id==86)return below==2&&w.solidTop(x,y-1,z);
-        return ground(below)&&(w.canSeeSky(x,y,z)||w.rawBrightness(x,y,z)>7);
+        return ground(below) && bushLight(w,x,y,z);
+    }
+    private static boolean bushLight(PePopulationWorld w,int x,int y,int z) {
+        // BushBlock::canSurvive stopped querying brightness in PE 0.13.
+        return w.release().compareTo(PeRelease.V0_13_2) >= 0 || w.canSeeSky(x,y,z) || w.rawBrightness(x,y,z)>7;
     }
     static void scatter(PePopulationWorld w,PeRandom r,int x,int y,int z,int id,int data,int attempts,int pumpkin){
-        boolean flower = id==37 || id==38 || id==39 || id==40;
-        boolean zFirst = flower && w.release().drawsZFirst();
+        boolean late = w.release().drawsZFirst();
+        // Later builds sample pumpkins X,Z,Y; flowers, lilies and dead bushes Z,Y,X.
+        boolean pumpkinOrder = late && pumpkin != 0;
+        boolean zFirst = late && !pumpkinOrder;
         for(int i=0;i<attempts;i++){
             int first = r.nextInt(8)-r.nextInt(8);
-            int py = y+r.nextInt(4)-r.nextInt(4);
-            int last = r.nextInt(8)-r.nextInt(8);
+            int middle = pumpkinOrder ? r.nextInt(8)-r.nextInt(8) : r.nextInt(4)-r.nextInt(4);
+            int end = pumpkinOrder ? r.nextInt(4)-r.nextInt(4) : r.nextInt(8)-r.nextInt(8);
+            int py = y + (pumpkinOrder ? end : middle);
+            int last = pumpkinOrder ? middle : end;
             int px = x+(zFirst ? last : first), pz = z+(zFirst ? first : last);
             if(w.isInside(px,py,pz)&&w.getBlock(px,py,pz)==0&&survive(w,px,py,pz,id))w.setBlock(px,py,pz,id,pumpkin==0?data:r.nextRawInt()&3);
         }
     }
-    private static void reeds(PePopulationWorld w,PeRandom r,int x,int y,int z){
+    static void reeds(PePopulationWorld w,PeRandom r,int x,int y,int z){
+        int mask = w.release().drawsZFirst() ? 7 : 3;
         for(int i=0;i<20;i++){
-            int px=x+(r.nextRawInt()&3)-(r.nextRawInt()&3),pz=z+(r.nextRawInt()&3)-(r.nextRawInt()&3);
+            int px=x+(r.nextRawInt()&mask)-(r.nextRawInt()&mask),pz=z+(r.nextRawInt()&mask)-(r.nextRawInt()&mask);
             if(w.getBlock(px,y,pz)!=0)continue;
             if(!water(w.getBlock(px-1,y-1,pz))&&!water(w.getBlock(px+1,y-1,pz))&&!water(w.getBlock(px,y-1,pz-1))&&!water(w.getBlock(px,y-1,pz+1)))continue;
             int height=2+r.nextInt(r.nextInt(3)+1);
@@ -85,9 +97,12 @@ public final class PeVegetation {
             }
         }
     }
-    private static void cactus(PePopulationWorld w,PeRandom r,int x,int y,int z){
+    static void cactus(PePopulationWorld w,PeRandom r,int x,int y,int z){
         for(int i=0;i<10;i++){
-            int px=x+(r.nextRawInt()&7)-(r.nextRawInt()&7),py=y+(r.nextRawInt()&3)-(r.nextRawInt()&3),pz=z+(r.nextRawInt()&7)-(r.nextRawInt()&7);
+            int first = r.nextInt(8)-r.nextInt(8);
+            int py = y+r.nextInt(4)-r.nextInt(4);
+            int last = r.nextInt(8)-r.nextInt(8);
+            int px = x+(w.release().drawsZFirst()?last:first), pz = z+(w.release().drawsZFirst()?first:last);
             if(w.getBlock(px,py,pz)!=0)continue;
             int height=1+r.nextInt(r.nextInt(3)+1);
             for(int j=0;j<height;j++){

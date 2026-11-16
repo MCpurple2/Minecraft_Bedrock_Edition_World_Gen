@@ -73,7 +73,9 @@ final class FabricPopulationWorld implements PePopulationWorld {
         if(!isInside(x,y,z))return;
         BlockPos pos=new BlockPos(x,y,z);
         if(id==175&&(data&8)!=0)data=world.getBlockState(pos.down()).contains(Properties.DOUBLE_BLOCK_HALF)?LegacyBlocks.data(world.getBlockState(pos.down()))|8:data;
-        BlockState state=LegacyBlocks.state(id,data);
+        // Tile 38 (Rose) used the blue flower in the pre-0.9 terrain atlas.
+        BlockState state = id == 38 && data == 0 && !release().hasWorldTypes()
+                ? PeWorldgenMod.CYAN_ROSE.getDefaultState() : LegacyBlocks.state(id,data);
         if(id==64||id==71||id==193||id==196){
             if((data&8)!=0){
                 BlockState lower=world.getBlockState(pos.down());
@@ -113,7 +115,11 @@ final class FabricPopulationWorld implements PePopulationWorld {
         return area[(x&15)+(z&15)*16];
     }
     @Override public boolean canSeeSky(int x,int y,int z){return y>=surfaceY(x,z);}
-    @Override public int rawBrightness(int x,int y,int z){return world.getLightLevel(new BlockPos(x,y,z));}
+    @Override public int rawBrightness(int x,int y,int z){
+        // Population runs before Java finishes its column light map.
+        if (core != null && canSeeSky(x,y,z)) return 15;
+        return world.getLightLevel(new BlockPos(x,y,z));
+    }
     @Override public int blockBrightness(int x,int y,int z){return world.getLightLevel(LightType.BLOCK,new BlockPos(x,y,z));}
     @Override public int skyBrightness(int x,int y,int z){
         if(canSeeSky(x,y,z))return 15;

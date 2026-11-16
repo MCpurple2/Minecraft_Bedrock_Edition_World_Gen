@@ -43,12 +43,26 @@ public final class PeAlphaClimate {
         for (int dx = 0; dx < width; dx++) for (int dz = 0; dz < height; dz++) {
             int i = dx * height + dz;
             float d = noise[i] * 1.1f + .5f;
-            float t = 1f - (d * .01f + (temp[i] * .15f + .7f) * .99f);
-            t = Math.clamp(1f - t*t, 0f, 1f);
+            float t = adjustedTemperature(temp[i], d);
             float r = Math.clamp(d * .002f + (rain[i] * .15f + .5f) * .998f, 0f, 1f);
             result[dx + dz * width] = TABLE[(int)(t * 63f) + 64 * (int)(r * 63f)];
         }
         return result;
+    }
+
+    /** Native getTemperatureBlock returns the x-major octave array used by the snow pass. */
+    float[] temperatures(int x, int z, int width, int height) {
+        float[] temp = temperature.getRegion2D(null,x,z,width,height,.025f,.025f);
+        float[] noise = detail.getRegion2D(null,x,z,width,height,.25f,.25f);
+        for (int i=0;i<temp.length;i++) {
+            float d=noise[i]*1.1f+.5f;
+            temp[i] = adjustedTemperature(temp[i], d);
+        }
+        return temp;
+    }
+    private static float adjustedTemperature(float noise, float detail) {
+        float t = 1f - (detail * .01f + (noise * .15f + .7f) * .99f);
+        return Math.clamp(1f - t*t, 0f, 1f);
     }
 
     int[] terrainArea(int x, int z, int width, int height, int stride) {

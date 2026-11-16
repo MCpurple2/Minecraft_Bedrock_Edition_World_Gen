@@ -1,6 +1,9 @@
 package net.mcpe.worldgen.fabric.client;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
+import net.mcpe.worldgen.fabric.PeWorldgenMod;
+import net.minecraft.client.render.BlockRenderLayer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientWorldEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -13,6 +16,7 @@ public final class PeWorldgenClient implements ClientModInitializer {
     private PeFiniteBounds bounds;
 
     @Override public void onInitializeClient() {
+        BlockRenderLayerMap.putBlock(PeWorldgenMod.CYAN_ROSE, BlockRenderLayer.CUTOUT);
         ClientPlayConnectionEvents.INIT.register((handler, client) -> bounds = null);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> bounds = null);
         ClientPlayNetworking.registerGlobalReceiver(PeFiniteBounds.ID, (packet, context) -> {

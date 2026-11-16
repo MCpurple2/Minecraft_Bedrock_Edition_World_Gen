@@ -32,6 +32,7 @@ final class LegacyBlocks {
         } catch(IllegalArgumentException ignored) {}
     }
     static int id(BlockState state) {
+        if (state.isOf(PeWorldgenMod.CYAN_ROSE)) return 38;
         if(state.isOf(Blocks.WATER))return state.get(Properties.LEVEL_15)==0?9:8;
         if(state.isOf(Blocks.LAVA))return state.get(Properties.LEVEL_15)==0?11:10;
         if(state.isOf(Blocks.PODZOL))return 243;

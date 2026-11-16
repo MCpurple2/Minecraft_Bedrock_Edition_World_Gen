@@ -12,6 +12,7 @@ public final class PePopulation {
     private final boolean replaceVillages;
     private final java.util.Set<PeContent> flags;
     private final PeWorldGenerator core;
+    private final PeEarlyPopulation early;
     private final PeVillageGenerator villages;
     private final PeScatteredStructures scattered;
     private final PeOceanMonuments monuments;
@@ -30,6 +31,7 @@ public final class PePopulation {
         this.flags=flags;
         this.replaceVillages = replaceVillages;
         this.seed=seed;this.old=old;this.core=core;
+        early = core.release().hasWorldTypes() ? null : new PeEarlyPopulation(seed);
         villages=new PeVillageGenerator(seed,old,core.biomes(),core.release(),flags);
         monuments=flags.contains(PeContent.MONUMENTS) ? new PeOceanMonuments(seed,core.biomes()) : null;
         scattered=new PeScatteredStructures(seed,core.release(),flags);
@@ -48,14 +50,14 @@ public final class PePopulation {
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
         // LevelChunk constructor 001f4430 stores min+15, y127, minZ+15 here.
         int bx=cx*16,bz=cz*16,biome=world.biomeAt(bx+15,bz+15);
-        var climate = core.alphaClimate();
-        var alpha = climate == null ? null : climate.area(bx+15,bz+15,1,1)[0];
         int chunkSeed=seed(seed,cx,cz);
         boolean later=core.release().compareTo(PeRelease.V0_12_3) >= 0;
         PeRandom random=new PeRandom(chunkSeed);
         // 0.12 reseeds before lakes. 0.11 inherits the preceding native TLS terrain RNG.
-        lakes(world,later?random:core.lakeRandom(cx,cz),biome,bx,bz);
-        if(later)random.setSeed(chunkSeed);
+        if (early == null) {
+            lakes(world,later ? random : core.lakeRandom(cx,cz),biome,bx,bz);
+            if (later) random.setSeed(chunkSeed);
+        }
         if(structures) {
             if (flags.contains(PeContent.VILLAGES) && !replaceVillages) villages.generate(world,random,cx,cz);
             if(flags.contains(PeContent.MINESHAFTS)) mineshafts.populate(world,random,cx,cz);
@@ -69,6 +71,15 @@ public final class PePopulation {
         }
         if(later)PeSnow.freeze(world,bx,bz);
         random.setSeed(chunkSeed);
+        var climate = core.alphaClimate();
+        if (early != null) {
+            int sampleX = bx + 16, sampleZ = bz + 16;
+            var earlyBiome = climate == null ? null : climate.area(sampleX,sampleZ,1,1)[0];
+            early.decorate(world,random,bx,bz,earlyBiome,world.biomeAt(sampleX,sampleZ),flags);
+            world.finishLiquidTicks(cx,cz);
+            return;
+        }
+        var alpha = climate == null ? null : climate.area(bx+15,bz+15,1,1)[0];
         PeDecorationSettings settings=biomeSettings.computeIfAbsent(biome,PeDecorationSettings::fromBiome);
         PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings,flags);
         PeOres.decorate(world,random,bx,bz);
@@ -109,7 +120,10 @@ public final class PePopulation {
             if(!old||y>=60)PeSmallStructures.lake(w,r,x,y,z,9);
         } else if(!old&&(r.nextRawInt()&7)==0) {
             int x=bx+3+r.nextInt(9),bound=r.nextInt(120)+8,y=r.nextInt(bound),z=bz+3+r.nextInt(9);
-            if(y>=60&&(y<=63||r.nextInt(10)==0))PeSmallStructures.lake(w,r,x,y,z,11);
+            // 0.9.5 / 0.10.2 accept low lava candidates in infinite worlds (ARM
+            // 0.10.2: 0x25868a, 0x25872c). 0.11.1 discards them before placement.
+            if (y < 60 && core.release().compareTo(PeRelease.V0_11_1) >= 0) return;
+            if (y <= 63 || r.nextInt(10) == 0) PeSmallStructures.lake(w,r,x,y,z,11);
         }
     }
     public static void grassAroundTree(PePopulationWorld w,PeRandom r,int x,int y,int z,int attempts) {

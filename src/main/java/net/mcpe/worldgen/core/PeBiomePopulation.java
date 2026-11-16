@@ -75,7 +75,7 @@ public final class PeBiomePopulation {
             int px = x+(zFirst ? last : first), pz = z+(zFirst ? first : last);
             if(py<0||py>=126||w.getBlock(px,py,pz)!=0||w.getBlock(px,py+1,pz)!=0)continue;
             int floor=w.getBlock(px,py-1,pz);
-            if(floor==2||floor==3||floor==60){w.setBlock(px,py,pz,175,type);w.setBlock(px,py+1,pz,175,8);success=true;}
+            if(PeVegetation.ground(floor)){w.setBlock(px,py,pz,175,type);w.setBlock(px,py+1,pz,175,8);success=true;}
         }return success;
     }
 }

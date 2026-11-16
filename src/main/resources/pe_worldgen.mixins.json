@@ -5,6 +5,7 @@
   "mixins": [
     "MinecraftServerMixin",
     "PrepareSpawnTaskMixin",
+    "PePlayerRespawnMixin",
     "PeWorldBiomeAccessMixin",
     "PePortalMixin",
     "PeFeatureRegionMixin",

@@ -115,9 +115,12 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public Vec3d initialPlayerPosition(ServerWorld world, BlockPos anchor) {
         int x = anchor.getX();
         int z = anchor.getZ();
-        if(settings.has(PeContent.MOUNTAIN_TERRAIN)) {
-            int feet=world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES,x,z);
-            return new Vec3d(x+0.5,feet,z+0.5);
+        if (settings.has(PeContent.DEEP_TERRAIN) || settings.has(PeContent.MOUNTAIN_TERRAIN)) {
+            // Joining can precede the first ticket for this column. World.getTopY returns
+            // the dimension minimum for an unloaded chunk. Read the finished chunk itself.
+            var chunk = world.getChunk(x >> 4, z >> 4);
+            int feet = chunk.sampleHeightmap(Heightmap.Type.MOTION_BLOCKING, x & 15, z & 15) + 1;
+            return new Vec3d(x + 0.5, feet, z + 0.5);
         }
         var terrain = new FabricPopulationWorld(world, engine());
         int y = PeInitialPlayer.feetY(anchor.getY(), () -> {
