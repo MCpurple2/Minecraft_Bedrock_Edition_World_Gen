@@ -17,7 +17,7 @@ final class PeBedrockScreen extends Screen {
     private final Screen parent;
     private final Consumer<PeBedrockSettings> apply;
     private final java.util.List<ClickableWidget> borderControls = new java.util.ArrayList<>();
-    private boolean portals, sync, finite, early;
+    private boolean portals, sync, finite, early, clay;
     private String size, minX, minZ;
     private ButtonWidget save;
     private PeBedrockSettings lastValid;
@@ -27,6 +27,7 @@ final class PeBedrockScreen extends Screen {
         this.parent = parent;
         finite = settings.finiteWorld();
         early = settings.pre09Biomes();
+        clay = settings.legacyClayBlob().orElseThrow();
         this.apply = apply;
         lastValid = settings;
         portals = settings.allowPortals();
@@ -42,10 +43,10 @@ final class PeBedrockScreen extends Screen {
 
     private PeBedrockSettings value() {
         try {
-            var result = new PeBedrockSettings(portals, sync, Integer.parseInt(size), coordinate(minX), coordinate(minZ), finite, early);
+            var result = new PeBedrockSettings(portals, sync, Integer.parseInt(size), coordinate(minX), coordinate(minZ), finite, early, Optional.of(clay));
             if (result.valid()) { lastValid = result; return result; }
         } catch (NumberFormatException ignored) { /* An unfinished input is normal while editing. */ }
-        return finite ? null : new PeBedrockSettings(portals,sync,lastValid.size(),lastValid.minX(),lastValid.minZ(),false,early);
+        return finite ? null : new PeBedrockSettings(portals,sync,lastValid.size(),lastValid.minX(),lastValid.minZ(),false,early,Optional.of(clay));
     }
 
     @Override protected void init() {
@@ -68,6 +69,8 @@ final class PeBedrockScreen extends Screen {
         updateBorderControls();
         body.add(CyclingButtonWidget.onOffBuilder(early).build(0,0,w,20,
             Text.literal("Use Pre-0.9.x Biomes"), (b,v) -> early = v));
+        body.add(CyclingButtonWidget.onOffBuilder(clay).build(0,0,w,20,
+            PeCustomizeScreen.label("legacy_clay_blob"), (b,v) -> clay = v));
         var scroll = new ScrollableLayoutWidget(client, body, height - 66);
         scroll.setHeight(height - 66);
         scroll.refreshPositions();
@@ -114,6 +117,7 @@ final class PeBedrockScreen extends Screen {
         obj.addProperty("min_chunk_x",settings.minX().orElse(null));
         obj.addProperty("min_chunk_z",settings.minZ().orElse(null));
         obj.addProperty("use_pre_09_biomes",settings.pre09Biomes());
+        obj.addProperty("use_legacy_clay_blob", settings.legacyClayBlob().orElseThrow());
         return new PeSettingsJsonScreen<>(parent, TITLE, JSON.toJson(obj), text -> parse(text,settings), apply);
     }
 
@@ -135,10 +139,11 @@ final class PeBedrockScreen extends Screen {
         var o = JSON.fromJson(text, JsonObject.class);
         if (!o.has("finite_world")) o.addProperty("finite_world",integer(o.get("border_size_chunks")) != -1);
         if (!o.has("use_pre_09_biomes")) o.addProperty("use_pre_09_biomes",current.pre09Biomes());
+        if (!o.has("use_legacy_clay_blob")) o.addProperty("use_legacy_clay_blob", current.legacyClayBlob().orElseThrow());
         if (!o.keySet().equals(Set.of("finite_world","use_pre_09_biomes","allow_nether_portal","sync_nether_border_size","border_size_chunks",
-                "min_chunk_x","min_chunk_z"))) throw new JsonParseException("Invalid Bedrock settings");
+                "min_chunk_x","min_chunk_z","use_legacy_clay_blob"))) throw new JsonParseException("Invalid Bedrock settings");
         var result = new PeBedrockSettings(flag(o.get("allow_nether_portal")),flag(o.get("sync_nether_border_size")),
-            integer(o.get("border_size_chunks")),optional(o.get("min_chunk_x")),optional(o.get("min_chunk_z")),flag(o.get("finite_world")),flag(o.get("use_pre_09_biomes")));
+            integer(o.get("border_size_chunks")),optional(o.get("min_chunk_x")),optional(o.get("min_chunk_z")),flag(o.get("finite_world")),flag(o.get("use_pre_09_biomes")), Optional.of(flag(o.get("use_legacy_clay_blob"))));
         if (!result.valid()) throw new JsonParseException("Invalid bounds");
         return result;
     }

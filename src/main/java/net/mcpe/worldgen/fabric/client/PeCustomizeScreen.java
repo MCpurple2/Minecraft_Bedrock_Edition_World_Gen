@@ -104,22 +104,26 @@ public final class PeCustomizeScreen extends Screen {
         int half = half();
         int presetWidth = Math.min(width - 16, Math.max(200, textRenderer.getWidth(presetLabel()) + 18));
         button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
-        for (int i = 0; i < 3; i++) {
-            boolean exclusive = i == 2;
-            boolean enabled = i != 1;
+        for (int i = 0; i < 2; i++) {
+            boolean exclusive = i == 1;
             int left = mid - half;
             int start = left + Math.min(174, half * 2 - 70);
-            var setting = button(Text.literal(enabled ? "Settings" : "WIP"), start, y + 24 + i * 24,
+            var setting = button(Text.literal("Settings"), start, y + 24 + i * 24,
                 mid + half - start - 25, () -> client.setScreen(exclusive
                     ? new PeBedrockScreen(this, bedrock, value -> bedrock = value)
                     : new PeContentScreen(this, settings, value -> settings = value)));
-            setting.active = enabled;
-            var advanced = button(Text.literal(enabled ? "✎" : "…"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
+            var advanced = button(Text.literal("✎"), setting.getX() + setting.getWidth() + 5, setting.getY(), 20,
                 () -> client.setScreen(exclusive ? PeBedrockScreen.editor(this, bedrock, value -> bedrock = value)
                     : new PeContentJsonScreen(this, release, settings, value -> settings = value)));
-            advanced.active = enabled;
-            if (advanced.active) advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
+            advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         }
+        int configureX = mid - half + Math.min(174, half * 2 - 70);
+        button(label("configure"), configureX, y + 72, mid + half - configureX - 25, () ->
+            client.setScreen(new net.minecraft.client.gui.screen.NoticeScreen(() -> client.setScreen(this),
+                label("mod_compatibility"), label("no_compatibility_options"))));
+        var compatibilityJson = button(Text.literal("✎"), mid + half - 20, y + 72, 20,
+            this::openCompatibilityJson);
+        compatibilityJson.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         int actions = y + 100;
         button(label("reset"), mid - half - 5, actions, half, () -> client.setScreen(new ConfirmScreen(answer -> {
             if (answer) {
@@ -145,6 +149,16 @@ public final class PeCustomizeScreen extends Screen {
         button(ScreenTexts.CANCEL, mid + 5, height - 27, half, this::close);
     }
 
+    private void openCompatibilityJson() {
+        var gson = new com.google.gson.GsonBuilder().setStrictness(com.google.gson.Strictness.STRICT).create();
+        client.setScreen(new PeSettingsJsonScreen<>(this, label("mod_compatibility"), "{}", text -> {
+            var json = gson.fromJson(text, com.google.gson.JsonObject.class);
+            // This build has no compatibility options. Reject keys rather than silently discarding them.
+            if (json == null || !json.isEmpty()) throw new com.google.gson.JsonParseException("Unknown compatibility option");
+            return json;
+        }, ignored -> {}));
+    }
+
     private Text presetLabel() {
         return presetLabel(release, old, settings, bedrock);
     }
@@ -163,7 +177,7 @@ public final class PeCustomizeScreen extends Screen {
         release = selectedRelease;
         old = selectedOld;
         settings = imported.resolve(release,old);
-        bedrock = importedBedrock;
+        bedrock = importedBedrock.resolveClay(selectedRelease);
         client.setScreen(this);
     }
     void importPreset(boolean selectedOld, PeRelease selectedRelease) {
@@ -210,7 +224,7 @@ public final class PeCustomizeScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 16, 0xffffffff);
         int right = width / 2 - half() + Math.min(174, half() * 2 - 70) - 5;
-        String[] labels = {"Java Edition Contents Provider", "WIP", "Bedrock Exclusive Features Provider"};
+        String[] labels = {"Java Edition Contents Provider", "Bedrock Exclusive Features Provider", label("mod_compatibility").getString()};
         for (int i = 0; i < labels.length; i++) {
             context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
                 top() + 30 + i * 24, 0xffffffff);

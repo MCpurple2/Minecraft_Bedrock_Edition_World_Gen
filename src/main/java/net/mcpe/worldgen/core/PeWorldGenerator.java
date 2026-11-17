@@ -11,6 +11,10 @@ package net.mcpe.worldgen.core;
 public final class PeWorldGenerator {
     public static final int HEIGHT = 128;
     public static final int SEA_LEVEL = 63;
+    private boolean legacyClayBlob;
+    public void setLegacyClayBlob(boolean enabled) { legacyClayBlob = enabled; }
+    boolean usesLegacyClayBlob() { return legacyClayBlob; }
+
     private final boolean old;
     private final PeRelease release;
     public record Spawn(int x, int y, int z) {}
@@ -50,6 +54,7 @@ public final class PeWorldGenerator {
     public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds, PeRelease release, boolean nativeEarly) {
         if (!release.supports(old)) throw new IllegalArgumentException(release.id());
         this.release = release;
+        legacyClayBlob = !release.hasWorldTypes();
         earlyTerrain = nativeEarly && !release.hasWorldTypes() ? new PeEarlyTerrain(seed) : null;
         this.old = old;
         this.useSpawnBounds = useSpawnBounds;

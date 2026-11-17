@@ -5,7 +5,11 @@ final class PeEarlyOres {
     private PeEarlyOres() {}
 
     static void generate(PePopulationWorld w, PeRandom r, int bx, int bz) {
-        veins(w, r, bx, bz, 82, 10, 32, 128);
+        generate(w, r, bx, bz, true);
+    }
+
+    static void generate(PePopulationWorld w, PeRandom r, int bx, int bz, boolean writeClay) {
+        legacyClay(w, r, bx, bz, writeClay);
         veins(w, r, bx, bz, 3, 20, 32, 128);
         veins(w, r, bx, bz, 13, 10, 32, 128);
         veins(w, r, bx, bz, 16, 20, 16, 128);
@@ -14,6 +18,14 @@ final class PeEarlyOres {
         veins(w, r, bx, bz, 73, 8, 7, 16);
         veins(w, r, bx, bz, 56, 1, 7, 16);
         veins(w, r, bx, bz, 21, 1, 6, 16);
+    }
+
+    static void legacyClay(PePopulationWorld w, PeRandom r, int bx, int bz, boolean write) {
+        // Keep the original draws even when placement is disabled.
+        for (int i = 0; i < 10; i++) {
+            int x = bx + r.nextInt(16), y = r.nextInt(128), z = bz + r.nextInt(16);
+            placeVein(w, r, x, y, z, 82, 32, write);
+        }
     }
 
     private static void veins(
@@ -34,6 +46,10 @@ final class PeEarlyOres {
     }
 
     static void placeVein(PePopulationWorld w, PeRandom r, int x, int y, int z, int id, int size) {
+        placeVein(w, r, x, y, z, id, size, true);
+    }
+
+    private static void placeVein(PePopulationWorld w, PeRandom r, int x, int y, int z, int id, int size, boolean enabled) {
         boolean clay = id == 82;
         if (clay && w.getBlock(x, y, z) != 8 && w.getBlock(x, y, z) != 9) return;
         float angle = r.nextFloat() * (float) Math.PI;
@@ -46,7 +62,7 @@ final class PeEarlyOres {
         float x1 = (float) (x + 8 + dx), x2 = (float) (x + 8 - dx);
         float z1 = (float) (z + 8 + dz), z2 = (float) (z + 8 - dz);
         float y1 = y + 2 + r.nextInt(3), y2 = y + 2 + r.nextInt(3);
-        boolean write = w.usePeOreDistribution() || id == 82 || id == 3 || id == 13;
+        boolean write = enabled && (w.usePeOreDistribution() || clay || id == 3 || id == 13);
         for (int step = 0; step <= size; step++) {
             float t = step * (float) Math.PI / size;
             float rand = r.nextFloat();

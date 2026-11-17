@@ -1,5 +1,5 @@
 Bedrock Edition World Generator
-Build 3.12 IWBUMS for Minecraft Java Edition 1.21.11 (Fabric)
+Build 3.13 IWBUMS for Minecraft Java Edition 1.21.11 (Fabric)
 
 Original project contributions are licensed under Apache-2.0. See LICENSE.
 
@@ -39,5 +39,5 @@ The Gradle wrapper launcher in the source distribution comes from the
 Moderner Beta repository. The Gradle wrapper is licensed under Apache-2.0.
 
 The corresponding project source and Gradle build files are distributed in
-source/Build 3.12 IWBUMS/. The distribution contains no Minecraft Pocket
+source/Build 3.13 IWBUMS/. The distribution contains no Minecraft Pocket
 Edition APK or native library.

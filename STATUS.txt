@@ -1,5 +1,7 @@
-Bedrock Edition World Generator Build 3.12 · IWBUMS
+Bedrock Edition World Generator Build 3.13 · IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.13 在 Bedrock Exclusive Features Provider 新增 Use Legacy Clay blob。早期预设默认开启，0.9.5 起默认关闭；旧存档按版本恢复默认值。开关控制水中起点、替换沙子的旧式黏土团。早期关闭时保留原随机数消耗，后期手动开启时使用独立的随机状态副本。主界面的模组兼容设置移至 BEFP 下方，提供配置入口及右侧 JSON 编辑器。本版暂无兼容选项，JSON 接受空对象 {}，未知字段会提示无效。青花改用本次提供的贴图。
 
 Build 3.12 修复 PE Alpha 0.1.3 至 0.8.1 首次出生和使用世界出生点重生时可能卡进方块的问题。先加载出生区块，再沿原 X/Z 检查玩家站立所需空间，逐格上移至能容纳玩家的位置。初始视角沿用预设。0.1.3 种子 999 的两份原版存档在 (128, 128) 均记录共享出生 Y=64，该列草方块位于 Y=84，脚底应落在 Y=85。
 

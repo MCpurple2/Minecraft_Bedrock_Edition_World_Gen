@@ -79,12 +79,13 @@ public final class PePopulation {
         if (early != null) {
             int sampleX = bx + 16, sampleZ = bz + 16;
             var earlyBiome = climate == null ? null : climate.area(sampleX,sampleZ,1,1)[0];
-            if (afterEarlyOres == null) PeEarlyOres.generate(world, random, bx, bz);
+            if (afterEarlyOres == null) PeEarlyOres.generate(world, random, bx, bz, core.usesLegacyClayBlob());
             else random = afterEarlyOres;
             early.decorate(world,random,bx,bz,earlyBiome,world.biomeAt(sampleX,sampleZ),flags);
             world.finishLiquidTicks(cx,cz);
             return;
         }
+        if (core.usesLegacyClayBlob()) PeEarlyOres.legacyClay(world, random.copy(), bx, bz, true);
         var alpha = climate == null ? null : climate.area(bx+15,bz+15,1,1)[0];
         PeDecorationSettings settings=biomeSettings.computeIfAbsent(biome,PeDecorationSettings::fromBiome);
         PeBiomePopulation.preDecorate(world,random,biome,bx,bz,old,settings,flags);

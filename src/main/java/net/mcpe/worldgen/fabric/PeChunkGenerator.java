@@ -101,7 +101,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
     private PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds,
             PeRelease release, PeContentSettings settings, PeBedrockSettings bedrock, boolean nativeEarly) {
         super(biomeSource, biome -> PeJavaContent.features(biome, settings.resolve(release,old)));
-        this.bedrock = bedrock;
+        this.bedrock = bedrock.resolveClay(release);
         this.settings = settings.resolve(release,old);
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.configure(this.settings);
         if (!release.supports(old)) throw new IllegalArgumentException("Unsupported PE world type for release: " + release.id());

@@ -10,7 +10,7 @@ import net.mcpe.worldgen.core.PeWorldGenerator;
 
 /** Coordinates and side length are in chunks so even the minimum contains a complete chunk. */
 public record PeBedrockSettings(boolean allowPortals, boolean syncNether, int size,
-                                Optional<Integer> minX, Optional<Integer> minZ, boolean finiteWorld, boolean pre09Biomes) {
+                                Optional<Integer> minX, Optional<Integer> minZ, boolean finiteWorld, boolean pre09Biomes, Optional<Boolean> legacyClayBlob) {
     private static final int LIMIT = 1_874_998;
     public static final Codec<PeBedrockSettings> CODEC = RecordCodecBuilder.<PeBedrockSettings>create(i -> i.group(
         Codec.BOOL.fieldOf("allow_nether_portal").forGetter(PeBedrockSettings::allowPortals),
@@ -19,13 +19,20 @@ public record PeBedrockSettings(boolean allowPortals, boolean syncNether, int si
         Codec.INT.optionalFieldOf("min_chunk_x").forGetter(PeBedrockSettings::minX),
         Codec.INT.optionalFieldOf("min_chunk_z").forGetter(PeBedrockSettings::minZ),
         Codec.BOOL.optionalFieldOf("finite_world").forGetter(s -> Optional.of(s.finiteWorld())),
-        Codec.BOOL.optionalFieldOf("use_pre_09_biomes", false).forGetter(PeBedrockSettings::pre09Biomes)
-    ).apply(i, (portal,sync,size,x,z,finite,early) ->
-        new PeBedrockSettings(portal,sync,size,x,z,finite.orElse(size != -1),early))).validate(s -> s.valid() ? DataResult.success(s)
+        Codec.BOOL.optionalFieldOf("use_pre_09_biomes", false).forGetter(PeBedrockSettings::pre09Biomes),
+        Codec.BOOL.optionalFieldOf("use_legacy_clay_blob").forGetter(PeBedrockSettings::legacyClayBlob)
+    ).apply(i, (portal,sync,size,x,z,finite,early,clay) ->
+        new PeBedrockSettings(portal,sync,size,x,z,finite.orElse(size != -1),early,clay))).validate(s -> s.valid() ? DataResult.success(s)
         : DataResult.error(() -> "Invalid border size or chunk coordinates"));
 
     public static PeBedrockSettings defaults(PeRelease release, boolean old, Optional<Boolean> legacyPortal) {
-        return new PeBedrockSettings(legacyPortal.orElse(!old && release.compareTo(PeRelease.V0_12_3) >= 0), true, 16, Optional.empty(), Optional.empty(), old, !release.hasWorldTypes());
+        return new PeBedrockSettings(legacyPortal.orElse(!old && release.compareTo(PeRelease.V0_12_3) >= 0), true, 16, Optional.empty(), Optional.empty(), old, !release.hasWorldTypes(), Optional.of(!release.hasWorldTypes()));
+    }
+
+    // Older saved settings omit the flag. Its historical default depends on the PE release.
+    public PeBedrockSettings resolveClay(PeRelease release) {
+        return legacyClayBlob.isPresent() ? this : new PeBedrockSettings(allowPortals, syncNether,
+            size, minX, minZ, finiteWorld, pre09Biomes, Optional.of(!release.hasWorldTypes()));
     }
 
     public boolean valid() {
@@ -38,6 +45,7 @@ public record PeBedrockSettings(boolean allowPortals, boolean syncNether, int si
 
     public void configure(PeWorldGenerator core, boolean useSpawn) {
         core.useAlphaClimate(pre09Biomes);
+        core.setLegacyClayBlob(legacyClayBlob.orElse(!core.release().hasWorldTypes()));
         if (!finiteWorld || size == -1) {
             core.configureBorder(null);
             return;

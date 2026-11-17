@@ -67,7 +67,7 @@ public final class PeEarlyOreLayout {
         // Their placement rolls depend on water at the clay origin. Veins cannot replace water.
         var world = new VeinWorld(cx,cz);
         PeRandom random = new PeRandom(PePopulation.seed(seed,cx,cz));
-        PeEarlyOres.generate(world,random,cx*16,cz*16);
+        PeEarlyOres.generate(world, random, cx*16, cz*16, core.usesLegacyClayBlob());
         int[][] writes = Arrays.stream(world.changed).map(b -> b.build().toArray()).toArray(int[][]::new);
         result = new Veins(writes, random);
         veins.put(key,result);
