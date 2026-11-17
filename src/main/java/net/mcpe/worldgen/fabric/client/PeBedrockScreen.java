@@ -12,7 +12,7 @@ import net.minecraft.screen.ScreenTexts;
 import net.minecraft.text.Text;
 
 final class PeBedrockScreen extends Screen {
-    private static final Text TITLE = Text.literal("Bedrock Exclusive Features Provider");
+    private static final Text TITLE = PeCustomizeScreen.label("bedrock.title");
     private static final Gson JSON = new GsonBuilder().setPrettyPrinting().serializeNulls().setStrictness(Strictness.STRICT).create();
     private final Screen parent;
     private final Consumer<PeBedrockSettings> apply;
@@ -53,22 +53,22 @@ final class PeBedrockScreen extends Screen {
         int w = Math.min(310, width - 24);
         var body = DirectionalLayoutWidget.vertical().spacing(5);
         body.add(CyclingButtonWidget.onOffBuilder(portals).build(0,0,w,20,
-            Text.literal("Allow Nether Portal"),(b,v) -> portals = v));
+            PeCustomizeScreen.label("bedrock.allow_portal"),(b,v) -> portals = v));
         body.add(CyclingButtonWidget.onOffBuilder(finite).build(0,0,w,20,
-            Text.literal("Finite World"),(b,v) -> {
+            PeCustomizeScreen.label("bedrock.finite"),(b,v) -> {
                 finite = v;
                 updateBorderControls();
                 save.active = value() != null;
             }));
         borderControls.clear();
         borderControls.add(body.add(CyclingButtonWidget.onOffBuilder(sync).build(0,0,w,20,
-            Text.literal("Sync Nether Border Size with Overworld"),(b,v) -> sync = v)));
-        field(body, w, "Border side (chunks, -1 = unlimited)", size, v -> size = v);
-        field(body, w, "Minimum chunk X (blank = automatic)", minX, v -> minX = v);
-        field(body, w, "Minimum chunk Z (blank = automatic)", minZ, v -> minZ = v);
+            PeCustomizeScreen.label("bedrock.sync_border"),(b,v) -> sync = v)));
+        field(body, w, PeCustomizeScreen.label("bedrock.border_size"), size, v -> size = v);
+        field(body, w, PeCustomizeScreen.label("bedrock.min_x"), minX, v -> minX = v);
+        field(body, w, PeCustomizeScreen.label("bedrock.min_z"), minZ, v -> minZ = v);
         updateBorderControls();
         body.add(CyclingButtonWidget.onOffBuilder(early).build(0,0,w,20,
-            Text.literal("Use Pre-0.9.x Biomes"), (b,v) -> early = v));
+            PeCustomizeScreen.label("bedrock.pre09_biomes"), (b,v) -> early = v));
         body.add(CyclingButtonWidget.onOffBuilder(clay).build(0,0,w,20,
             PeCustomizeScreen.label("legacy_clay_blob"), (b,v) -> clay = v));
         var scroll = new ScrollableLayoutWidget(client, body, height - 66);
@@ -94,9 +94,8 @@ final class PeBedrockScreen extends Screen {
         }
     }
 
-    private void field(DirectionalLayoutWidget body, int width, String label, String initial, Consumer<String> update) {
+    private void field(DirectionalLayoutWidget body, int width, Text name, String initial, Consumer<String> update) {
         var row = body.add(DirectionalLayoutWidget.horizontal().spacing(4));
-        var name = Text.literal(label);
         row.add(new TextWidget(width-74,20,name,textRenderer));
         var field = row.add(new TextFieldWidget(textRenderer,70,20,name));
         borderControls.add(field);

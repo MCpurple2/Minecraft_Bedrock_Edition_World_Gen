@@ -22,6 +22,7 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.world.GeneratorOptionsHolder;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.screen.ScreenTexts;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -34,13 +35,9 @@ import net.minecraft.world.gen.GeneratorOptions;
 public final class PeCustomizeScreen extends Screen {
     static final String FINITE = "Pocket Edition Alpha Finite";
     static final String INFINITE = "Pocket Edition Alpha";
-    private static final String[] CATEGORIES = {FINITE, INFINITE, "Pocket Edition", "Xbox 360 Edition",
-        "Xbox One Edition", "PlayStation 3 Edition", "PlayStation 4 Edition", "PlayStation Vita Edition",
-        "Wii U Edition", "Nintendo Switch Edition"};
-    private static final String[] DESCRIPTIONS = {
-        "World generation from Pocket Edition Alpha 0.1.3 to Alpha 0.8.1. Also includes world generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.5 using the Old world type.",
-        "World generation from Pocket Edition Alpha 0.9.5 to Alpha 0.16.2."
-    };
+    private static final String[] CATEGORIES = {"category.alpha_finite", "category.alpha", "category.pocket",
+        "category.xbox_360", "category.xbox_one", "category.ps3", "category.ps4", "category.ps_vita",
+        "category.wii_u", "category.switch"};
     private final CreateWorldScreen parent;
     private boolean old;
     private PeContentSettings settings = PeContentSettings.DEFAULT.resolve(PeRelease.V0_11_1,false);
@@ -58,7 +55,7 @@ public final class PeCustomizeScreen extends Screen {
         }
     }
 
-    static Text label(String key, Object... args) {
+    static MutableText label(String key, Object... args) {
         return Text.translatable("pe_worldgen.customize." + key, args);
     }
 
@@ -66,24 +63,26 @@ public final class PeCustomizeScreen extends Screen {
         var choices = new ArrayList<PePresetScreen.Choice>();
         for (int i = 0; i < CATEGORIES.length; i++) {
             boolean finite = i == 0;
-            Text description = i < DESCRIPTIONS.length ? Text.literal(DESCRIPTIONS[i]) : Text.empty();
-            Runnable open = i < DESCRIPTIONS.length ? () -> openVersions(finite) : null;
-            choices.add(new PePresetScreen.Choice(CATEGORIES[i], description, open));
+            Text description = i < 2 ? label(CATEGORIES[i] + ".description") : Text.empty();
+            Runnable open = i < 2 ? () -> openVersions(finite) : null;
+            choices.add(new PePresetScreen.Choice(label(CATEGORIES[i]).getString(), description, open));
         }
         client.setScreen(new PePresetScreen(this, label("presets"), choices));
     }
 
     private void openVersions(boolean finite) {
-        String kind = finite ? "Finite" : "Infinite";
-        String category = "Pocket Edition Alpha " + kind + " World Presets";
+        Text category = label(finite ? "versions.finite" : "versions.infinite");
         var choices = new ArrayList<PePresetScreen.Choice>();
         for (PeRelease candidate : PeRelease.values()) {
-            if (candidate.supports(finite)) {
-                choices.add(new PePresetScreen.Choice(candidate.id(), Text.literal("Explore Minecraft Pocket Edition Alpha " + candidate.id() + "'s " + (finite && candidate.hasWorldTypes() ? "Finite " : "") + "World"),
+            // Old 0.16.2 remains readable for saved settings. New finite worlds use 0.16.5.
+            if (candidate.supports(finite) && !(finite && candidate == PeRelease.V0_16_2)) {
+                Text description = label(finite && candidate.hasWorldTypes() ? "version.finite_description"
+                    : "version.description", candidate.id());
+                choices.add(new PePresetScreen.Choice(candidate.id(), description,
                     () -> importPreset(finite, candidate), presetIcon(candidate,finite)));
             }
         }
-        client.setScreen(new PePresetScreen(client.currentScreen, Text.literal(category), choices));
+        client.setScreen(new PePresetScreen(client.currentScreen, category, choices));
     }
 
     private Identifier presetIcon(PeRelease release, boolean finite) {
@@ -108,7 +107,7 @@ public final class PeCustomizeScreen extends Screen {
             boolean exclusive = i == 1;
             int left = mid - half;
             int start = left + Math.min(174, half * 2 - 70);
-            var setting = button(Text.literal("Settings"), start, y + 24 + i * 24,
+            var setting = button(label("settings"), start, y + 24 + i * 24,
                 mid + half - start - 25, () -> client.setScreen(exclusive
                     ? new PeBedrockScreen(this, bedrock, value -> bedrock = value)
                     : new PeContentScreen(this, settings, value -> settings = value)));
@@ -167,9 +166,9 @@ public final class PeCustomizeScreen extends Screen {
         var defaults = PeContentSettings.DEFAULT.resolve(release, old);
         if (!settings.flags().equals(defaults.flags()) || !settings.water().equals(defaults.water())
                 || !bedrock.equals(PeBedrockSettings.defaults(release, old, java.util.Optional.empty()))) {
-            return label("preset", Text.literal("Custom").formatted(Formatting.AQUA));
+            return label("preset", label("version.custom").formatted(Formatting.AQUA));
         }
-        return label("preset", Text.literal("Pocket Edition Alpha " + release.id() + (old && release.hasWorldTypes() ? " Finite" : "")).formatted(Formatting.YELLOW));
+        return label("preset", label(old && release.hasWorldTypes() ? "version.finite_name" : "version.name", release.id()).formatted(Formatting.YELLOW));
     }
 
     void importPreset(boolean selectedOld, PeRelease selectedRelease, PeContentSettings imported, PeBedrockSettings importedBedrock) {
@@ -224,7 +223,7 @@ public final class PeCustomizeScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(textRenderer, title, width / 2, top() - 16, 0xffffffff);
         int right = width / 2 - half() + Math.min(174, half() * 2 - 70) - 5;
-        String[] labels = {"Java Edition Contents Provider", "Bedrock Exclusive Features Provider", label("mod_compatibility").getString()};
+        String[] labels = {label("content").getString(), label("bedrock").getString(), label("mod_compatibility").getString()};
         for (int i = 0; i < labels.length; i++) {
             context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
                 top() + 30 + i * 24, 0xffffffff);
