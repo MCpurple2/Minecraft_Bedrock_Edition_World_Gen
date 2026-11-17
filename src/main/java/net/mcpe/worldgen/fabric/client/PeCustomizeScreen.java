@@ -14,6 +14,7 @@ import net.minecraft.world.gen.chunk.NoiseChunkGenerator;
 import net.minecraft.world.gen.chunk.ChunkGeneratorSettings;
 import net.mcpe.worldgen.fabric.PeBiomeSource;
 import net.mcpe.worldgen.fabric.PeChunkGenerator;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
@@ -94,7 +95,15 @@ public final class PeCustomizeScreen extends Screen {
         return addDrawableChild(ButtonWidget.builder(text, b -> action.run()).dimensions(x, y, w, 20).build());
     }
 
-    private int top() { return Math.max(24, Math.min(33, height - 185)); }
+    private void infoButton(String key, String value, Formatting color, int x, int y, int width) {
+        Text text = Text.empty().append(label(key).formatted(Formatting.BOLD))
+            .append(Text.literal(value).formatted(color));
+        // Render a normal button without registering it for mouse or keyboard input.
+        addDrawable(ButtonWidget.builder(text, button -> {}).dimensions(x, y, width, 20).build());
+    }
+
+    private int top() { return Math.max(19, Math.min(33, height - 201)); }
+    private int rowStep() { return Math.clamp((height - top() - 51) / 6, 20, 24); }
     private int half() { return Math.min(150, (width - 22) / 2); }
 
     @Override protected void init() {
@@ -103,11 +112,12 @@ public final class PeCustomizeScreen extends Screen {
         int half = half();
         int presetWidth = Math.min(width - 16, Math.max(200, textRenderer.getWidth(presetLabel()) + 18));
         button(presetLabel(), mid - presetWidth / 2, y, presetWidth, this::openCategories);
+        int step = rowStep();
         for (int i = 0; i < 2; i++) {
             boolean exclusive = i == 1;
             int left = mid - half;
             int start = left + Math.min(174, half * 2 - 70);
-            var setting = button(label("settings"), start, y + 24 + i * 24,
+            var setting = button(label("settings"), start, y + (1 + i) * step,
                 mid + half - start - 25, () -> client.setScreen(exclusive
                     ? new PeBedrockScreen(this, bedrock, value -> bedrock = value)
                     : new PeContentScreen(this, settings, value -> settings = value)));
@@ -117,13 +127,13 @@ public final class PeCustomizeScreen extends Screen {
             advanced.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
         }
         int configureX = mid - half + Math.min(174, half * 2 - 70);
-        button(label("configure"), configureX, y + 72, mid + half - configureX - 25, () ->
+        button(label("configure"), configureX, y + 3 * step, mid + half - configureX - 25, () ->
             client.setScreen(new net.minecraft.client.gui.screen.NoticeScreen(() -> client.setScreen(this),
                 label("mod_compatibility"), label("no_compatibility_options"))));
-        var compatibilityJson = button(Text.literal("✎"), mid + half - 20, y + 72, 20,
+        var compatibilityJson = button(Text.literal("✎"), mid + half - 20, y + 3 * step, 20,
             this::openCompatibilityJson);
         compatibilityJson.setTooltip(net.minecraft.client.gui.tooltip.Tooltip.of(label("edit_json")));
-        int actions = y + 100;
+        int actions = y + 4 * step + 4;
         button(label("reset"), mid - half - 5, actions, half, () -> client.setScreen(new ConfirmScreen(answer -> {
             if (answer) {
                 old = false;
@@ -140,10 +150,17 @@ public final class PeCustomizeScreen extends Screen {
             var source = PeBiomeSource.preview(net.mcpe.worldgen.fabric.PeModernInputs.from(registries),registries.getOrThrow(RegistryKeys.BIOME),seed,old,release,settings,bedrock);
             client.setScreen(new PeBiomePreviewScreen(this,source,seed));
         });
-        button(label("quick"), mid - half - 5, actions + 24, half,
+        button(label("quick"), mid - half - 5, actions + step, half,
             () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, bedrock, false)));
-        button(label("export_pack"), mid + 5, actions + 24, half,
+        button(label("export_pack"), mid + 5, actions + step, half,
             () -> client.setScreen(new PePresetTransferScreen(this, old, release, settings, bedrock, true)));
+        String version = FabricLoader.getInstance().getModContainer("pe_worldgen").orElseThrow()
+            .getMetadata().getVersion().getFriendlyString();
+        boolean iwbums = version.endsWith(" IWBUMS");
+        infoButton("mod_version", version.replaceFirst(" (Stable|IWBUMS)$", ""), Formatting.YELLOW,
+            mid - half - 5, actions + 2 * step, half);
+        infoButton("branch", iwbums ? "IWBUMS" : "Stable", iwbums ? Formatting.RED : Formatting.GREEN,
+            mid + 5, actions + 2 * step, half);
         button(ScreenTexts.DONE, mid - half - 5, height - 27, half, this::apply);
         button(ScreenTexts.CANCEL, mid + 5, height - 27, half, this::close);
     }
@@ -226,7 +243,7 @@ public final class PeCustomizeScreen extends Screen {
         String[] labels = {label("content").getString(), label("bedrock").getString(), label("mod_compatibility").getString()};
         for (int i = 0; i < labels.length; i++) {
             context.drawTextWithShadow(textRenderer, labels[i], right - textRenderer.getWidth(labels[i]),
-                top() + 30 + i * 24, 0xffffffff);
+                top() + (1 + i) * rowStep() + 6, 0xffffffff);
         }
     }
 }

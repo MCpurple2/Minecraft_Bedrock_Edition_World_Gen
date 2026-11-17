@@ -3,6 +3,8 @@
   "generator.pe_worldgen.mcpe_alpha": "基岩版",
   "generator.pe_worldgen.pe_0111_infinite": "携带版Alpha 0.11.1",
   "generator.pe_worldgen.pe_0111_old": "携带版Alpha 0.11.1 (旧世界类型)",
+  "pe_worldgen.customize.mod_version": "模组版本：",
+  "pe_worldgen.customize.branch": "分支：",
   "pe_worldgen.customize.title": "基岩版世界生成器自定义菜单",
   "pe_worldgen.customize.preset": "世界类型预设: %s",
   "pe_worldgen.customize.presets": "基岩版世界生成器世界类型预设菜单",

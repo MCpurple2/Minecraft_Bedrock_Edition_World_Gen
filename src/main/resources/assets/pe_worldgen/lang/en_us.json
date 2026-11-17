@@ -3,6 +3,8 @@
   "generator.pe_worldgen.mcpe_alpha": "Bedrock Edition",
   "generator.pe_worldgen.pe_0111_infinite": "Pocket Edition Alpha 0.11.1",
   "generator.pe_worldgen.pe_0111_old": "Pocket Edition Alpha 0.11.1 Finite",
+  "pe_worldgen.customize.mod_version": "Mod version: ",
+  "pe_worldgen.customize.branch": "Branch: ",
   "pe_worldgen.customize.title": "Bedrock Edition World Generator @displayBuild@ Customization",
   "pe_worldgen.customize.preset": "World Preset: %s",
   "pe_worldgen.customize.presets": "Bedrock Edition World Generator @displayBuild@ World Presets",

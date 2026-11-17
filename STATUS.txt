@@ -1,5 +1,7 @@
-Bedrock Edition World Generator Build 3.14 · IWBUMS
+Bedrock Edition World Generator Build 3.15 · IWBUMS
 Minecraft Java Edition 1.21.11 · Fabric
+
+Build 3.15 在自定义菜单的快速导入/导出、导出数据包下方新增模组版本与分支按钮。两个按钮仅显示当前构建信息。
 
 Build 3.14 实装简中填写稿中的预设、界面、生物群系及青花译名。新建世界时，旧世界类型列表以 0.16.5 收尾，移除重复的 0.16.2 选项。无限世界仍可选 0.16.2，已有存档和导入配置仍可读取旧预设。
 
