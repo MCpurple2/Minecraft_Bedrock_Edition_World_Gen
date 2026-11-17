@@ -13,6 +13,7 @@ import net.mcpe.worldgen.core.PeEarlyOreLayout;
 import net.mcpe.worldgen.core.PeInitialPlayer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.block.BlockState;
+import net.minecraft.entity.EntityType;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
@@ -127,7 +128,24 @@ public final class PeChunkGenerator extends ChunkGenerator {
     public Vec3d initialPlayerPosition(ServerWorld world, BlockPos anchor) {
         int x = anchor.getX();
         int z = anchor.getZ();
-        if (settings.has(PeContent.DEEP_TERRAIN) || settings.has(PeContent.MOUNTAIN_TERRAIN)) {
+        boolean modifiedSurface = settings.has(PeContent.DEEP_TERRAIN) || settings.has(PeContent.MOUNTAIN_TERRAIN);
+        if (!release.hasWorldTypes()) {
+            // Early PE puts the player's feet at shared Y + 1. Entity::resetPos raises
+            // the standing box one block at a time until it clears the generated world.
+            var chunk = world.getChunk(x >> 4, z >> 4);
+            int feet = modifiedSurface || !nativeEarlyTerrain
+                ? chunk.sampleHeightmap(Heightmap.Type.MOTION_BLOCKING, x & 15, z & 15) + 1
+                : anchor.getY() + 1;
+            double centerX = x + 0.5;
+            double centerZ = z + 0.5;
+            Box body = EntityType.PLAYER.getDimensions().getBoxAt(centerX, feet, centerZ);
+            while (feet <= world.getTopYInclusive() && world.getBlockCollisions(null, body).iterator().hasNext()) {
+                feet++;
+                body = body.offset(0, 1, 0);
+            }
+            return new Vec3d(centerX, feet, centerZ);
+        }
+        if (modifiedSurface) {
             // Joining can precede the first ticket for this column. World.getTopY returns
             // the dimension minimum for an unloaded chunk. Read the finished chunk itself.
             var chunk = world.getChunk(x >> 4, z >> 4);

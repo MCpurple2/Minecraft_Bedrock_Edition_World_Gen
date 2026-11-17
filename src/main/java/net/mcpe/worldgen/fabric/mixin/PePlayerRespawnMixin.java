@@ -16,10 +16,11 @@ abstract class PePlayerRespawnMixin {
     // Personal respawn targets (beds, anchors and /spawnpoint) are resolved before
     // this fallback. A changed world spawn keeps the normal Java search.
     @Inject(method = "getWorldSpawnPos", at = @At("HEAD"), cancellable = true)
-    private void peWorldgen$deepWorldSpawn(ServerWorld world, BlockPos anchor,
+    private void peWorldgen$worldSpawn(ServerWorld world, BlockPos anchor,
             CallbackInfoReturnable<BlockPos> result) {
         if (!(world.getChunkManager().getChunkGenerator() instanceof PeChunkGenerator pe)
-                || !pe.usesPeSpawn() || !pe.settings().has(PeContent.DEEP_TERRAIN)) return;
+                || !pe.usesPeSpawn()) return;
+        if (pe.release().hasWorldTypes() && !pe.settings().has(PeContent.DEEP_TERRAIN)) return;
         var spawn = world.getSpawnPoint();
         if (spawn.getDimension().equals(world.getRegistryKey()) && anchor.equals(pe.initialSpawnAnchor())
                 && spawn.yaw() == PeInitialPlayer.YAW && spawn.pitch() == PeInitialPlayer.PITCH) {
