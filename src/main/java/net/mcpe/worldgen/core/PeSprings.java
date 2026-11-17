@@ -27,7 +27,9 @@ public final class PeSprings {
         for(int i=0;i<4;i++){int id=w.getBlock(x+SIDES[i][0],y,z+SIDES[i][1]);if(id==1)rock++;if(id==0){air++;open=i;}}
         if(rock!=3||air!=1)return true;
         w.setBlock(x,y,z,flowingId,0);
-        if(flowingId==10)spreadFire(w,r,x,y,z);
+        // The early source ticks with Level::instantTick set. 0.8's fire routine
+        // returns immediately in this mode; earlier dynamic lava has no fire routine.
+        if (flowingId == 10 && w.release().hasWorldTypes()) spreadFire(w,r,x,y,z);
         // Dynamic source data=0 calls _setStatic before checking side spread.
         w.setBlock(x,y,z,flowingId+1,0);
         int px=x+SIDES[open][0],pz=z+SIDES[open][1],id=w.getBlock(px,y,pz);

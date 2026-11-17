@@ -34,20 +34,35 @@ public final class PeAlphaClimate {
         return r < .45f ? Type.PLAINS : r < .9f ? Type.SEASONAL_FOREST : Type.RAINFOREST;
     }
 
+    /** Native climate arrays are stored at dx * height + dz. */
+    record Samples(float[] temperature, float[] rainfall) {
+        Type[] types(int width, int height) {
+            Type[] result = new Type[width * height];
+            for (int dx = 0; dx < width; dx++) for (int dz = 0; dz < height; dz++) {
+                int i = dx * height + dz;
+                result[dx + dz * width] = TABLE[(int)(temperature[i] * 63f)
+                    + 64 * (int)(rainfall[i] * 63f)];
+            }
+            return result;
+        }
+    }
+
+    Samples samples(int x, int z, int width, int height) {
+        float[] temp = temperature.getRegion2D(null, x, z, width, height, .025f, .025f);
+        float[] rain = rainfall.getRegion2D(null, x, z, width, height, .05f, .05f);
+        float[] noise = detail.getRegion2D(null, x, z, width, height, .25f, .25f);
+        for (int i = 0; i < temp.length; i++) {
+            float d = noise[i] * 1.1f + .5f;
+            temp[i] = adjustedTemperature(temp[i], d);
+            rain[i] = Math.clamp(d * .002f + (rain[i] * .15f + .5f) * .998f, 0f, 1f);
+        }
+        return new Samples(temp, rain);
+    }
+
     /** Result uses the generator's x + z * width layout. */
     public Type[] area(int x, int z, int width, int height) {
-        float[] temp = temperature.getRegion2D(null,x,z,width,height,.025f,.025f);
-        float[] rain = rainfall.getRegion2D(null,x,z,width,height,.05f,.05f);
-        float[] noise = detail.getRegion2D(null,x,z,width,height,.25f,.25f);
-        Type[] result = new Type[width * height];
-        for (int dx = 0; dx < width; dx++) for (int dz = 0; dz < height; dz++) {
-            int i = dx * height + dz;
-            float d = noise[i] * 1.1f + .5f;
-            float t = adjustedTemperature(temp[i], d);
-            float r = Math.clamp(d * .002f + (rain[i] * .15f + .5f) * .998f, 0f, 1f);
-            result[dx + dz * width] = TABLE[(int)(t * 63f) + 64 * (int)(r * 63f)];
-        }
-        return result;
+        Samples climate = samples(x, z, width, height);
+        return climate.types(width, height);
     }
 
     /** Native getTemperatureBlock returns the x-major octave array used by the snow pass. */

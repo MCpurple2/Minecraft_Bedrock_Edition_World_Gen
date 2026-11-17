@@ -45,6 +45,10 @@ public final class PePopulation {
         return (chunkX*a+chunkZ*b)^(int)worldSeed;
     }
     public void populate(PePopulationWorld world,int cx,int cz,boolean structures) {
+        populate(world, cx, cz, structures, null);
+    }
+
+    public void populate(PePopulationWorld world, int cx, int cz, boolean structures, PeRandom afterEarlyOres) {
         if(!core.isInsideChunk(cx,cz))return;
         world.beginLiquidTicks(cx,cz);
         // postProcess reads LevelChunk+0x10, the inclusive max TilePos, not min.
@@ -75,6 +79,8 @@ public final class PePopulation {
         if (early != null) {
             int sampleX = bx + 16, sampleZ = bz + 16;
             var earlyBiome = climate == null ? null : climate.area(sampleX,sampleZ,1,1)[0];
+            if (afterEarlyOres == null) PeEarlyOres.generate(world, random, bx, bz);
+            else random = afterEarlyOres;
             early.decorate(world,random,bx,bz,earlyBiome,world.biomeAt(sampleX,sampleZ),flags);
             world.finishLiquidTicks(cx,cz);
             return;

@@ -56,7 +56,10 @@ public final class PeVegetation {
     private static boolean survive(PePopulationWorld w,int x,int y,int z,int id){
         int below=w.getBlock(x,y-1,z);
         if(id==111)return y>=0&&y<128&&water(below)&&w.getData(x,y-1,z)==0;
-        if(id==39||id==40)return y>=0&&y<128&&(below==110||below==243||w.rawBrightness(x,y,z)<13&&w.solidTop(x,y-1,z));
+        if (id==39 || id==40) {
+            if (w.release().hasBushMushrooms()) return (below==2 || below==3 || below==60) && bushLight(w,x,y,z);
+            return y>=0 && y<128 && (below==110 || below==243 || w.rawBrightness(x,y,z)<13 && w.solidTop(x,y-1,z));
+        }
         if (id == 32) {
             boolean podzol = below == 243 && w.release().compareTo(PeRelease.V0_12_3) >= 0;
             return (below == 12 || below == 159 || below == 172 || podzol) && bushLight(w,x,y,z);

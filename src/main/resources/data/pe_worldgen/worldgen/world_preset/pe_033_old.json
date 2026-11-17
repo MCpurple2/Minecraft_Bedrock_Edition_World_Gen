@@ -10,7 +10,8 @@
           "type": "pe_worldgen:pe_0111",
           "old": true
         },
-        "pe_version": "0.3.3"
+        "pe_version": "0.3.3",
+        "native_early_terrain": true
       },
       "type": "minecraft:overworld"
     },

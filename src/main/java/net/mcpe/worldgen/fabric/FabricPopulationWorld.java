@@ -37,6 +37,8 @@ final class FabricPopulationWorld implements PePopulationWorld {
     private boolean peOres = true;
     @Override public boolean usePeOreDistribution() { return peOres; }
     private PeLiquidTicks liquids;
+    private final java.util.Set<BlockPos> newEarlyLeaves = new java.util.HashSet<>();
+    private final java.util.ArrayDeque<BlockPos> leafFrontier = new java.util.ArrayDeque<>();
     private final StructureWorldAccess world;
     private final PeWorldGenerator core;
     private final Map<Long,int[]> biomeAreas=new HashMap<>();
@@ -52,7 +54,33 @@ final class FabricPopulationWorld implements PePopulationWorld {
         FabricMonumentRooms.populate(world, x, z, direction, rotationSeed, random, chunkX, chunkZ);
     }
     @Override public void beginLiquidTicks(int cx,int cz){liquids=new PeLiquidTicks(this,cx,cz,core==null);}
-    @Override public void finishLiquidTicks(int cx,int cz){liquids.drain();}
+    @Override public void finishLiquidTicks(int cx,int cz){
+        connectEarlyLeaves();
+        liquids.drain();
+    }
+
+    /** Natural PE leaves are written before their trunks. Supply JE's decay distance
+     * once the full crown is present, before newly loaded chunks start random ticks. */
+    private void connectEarlyLeaves() {
+        for (int distance=1; distance<=6 && !leafFrontier.isEmpty() && !newEarlyLeaves.isEmpty(); distance++) {
+            int count = leafFrontier.size();
+            for (int i=0; i<count; i++) {
+                BlockPos source = leafFrontier.removeFirst();
+                for (Direction side : Direction.values()) {
+                    BlockPos pos = source.offset(side);
+                    if (!newEarlyLeaves.remove(pos)) continue;
+                    var state = world.getBlockState(pos);
+                    if (!state.contains(net.minecraft.block.LeavesBlock.DISTANCE)) continue;
+                    int oldDistance = state.get(net.minecraft.block.LeavesBlock.DISTANCE);
+                    if (oldDistance > distance)
+                        world.setBlockState(pos, state.with(net.minecraft.block.LeavesBlock.DISTANCE, distance), 2);
+                    leafFrontier.addLast(pos);
+                }
+            }
+        }
+        leafFrontier.clear();
+        newEarlyLeaves.clear();
+    }
     @Override public void scheduleLiquidTick(int x,int y,int z,int id,int level){liquids.schedule(x,y,z,id,level);}
     @Override public void tickStructureLiquid(int x,int y,int z,int id){
         // StructurePiece::placeBlock seeds a separate MT for its immediate tick.
@@ -62,7 +90,8 @@ final class FabricPopulationWorld implements PePopulationWorld {
     @Override public boolean isInside(int x,int y,int z){return y>=0&&y<128&&(core==null||core.isInsideChunk(x >> 4, z >> 4));}
     @Override public int getBlock(int x,int y,int z){
         if(y<0||y>=128)return 0;
-        if(!isInside(x,y,z))return 0;
+        // EmptyLevelChunk::getTile exposes invisible bedrock to the PE generator at its horizontal limit.
+        if(!isInside(x,y,z))return core.usesNativeEarlyTerrain() ? 95 : 0;
         return LegacyBlocks.id(world.getBlockState(new BlockPos(x,y,z)));
     }
     @Override public int getData(int x,int y,int z){
@@ -86,6 +115,13 @@ final class FabricPopulationWorld implements PePopulationWorld {
             }
         }
         world.setBlockState(pos,state,2);
+        if ((id==17 || id==18 || id==161 || id==162) && release().compareTo(PeRelease.V0_9_5)<0) {
+            if (id==18 || id==161) newEarlyLeaves.add(pos);
+            else if (id==17 || id==162) {
+                newEarlyLeaves.remove(pos);
+                leafFrontier.addLast(pos);
+            }
+        }
         long column=columnKey(x,z);
         Integer height=columnHeights.get(column);
         if (height != null && y < 127) {
@@ -118,8 +154,32 @@ final class FabricPopulationWorld implements PePopulationWorld {
     @Override public int rawBrightness(int x,int y,int z){
         // Population runs before Java finishes its column light map.
         if (core != null && canSeeSky(x,y,z)) return 15;
-        return world.getLightLevel(new BlockPos(x,y,z));
+        int light = world.getLightLevel(new BlockPos(x,y,z));
+        if (core == null || release().hasWorldTypes() || light == 15 || !isInside(x,y,z)) return light;
+        // PE updates the skylight column as the crown is placed. JE's light map is still
+        // empty during decoration. Include the direct column and light from touching columns.
+        light = Math.max(light, earlyColumnLight(x,y,z));
+        if (light < 14 && getBlock(x,y,z) == 0) {
+            light = Math.max(light, earlyColumnLight(x-1,y,z)-1);
+            light = Math.max(light, earlyColumnLight(x+1,y,z)-1);
+            light = Math.max(light, earlyColumnLight(x,y,z-1)-1);
+            light = Math.max(light, earlyColumnLight(x,y,z+1)-1);
+        }
+        return light;
     }
+
+    private int earlyColumnLight(int x, int y, int z) {
+        if (!isInside(x,y,z)) return 0;
+        int light = 15;
+        for (int h=surfaceY(x,z)-1; h>=y && light>0; h--) {
+            int block = getBlock(x,h,z);
+            if (block==8 || block==9 || block==79) light-=3;
+            else if (block==18 || !PeSurfacePatches.blocksSkylight(block)) light--;
+            else return 0;
+        }
+        return Math.max(light,0);
+    }
+
     @Override public int blockBrightness(int x,int y,int z){return world.getLightLevel(LightType.BLOCK,new BlockPos(x,y,z));}
     @Override public int skyBrightness(int x,int y,int z){
         if(canSeeSky(x,y,z))return 15;

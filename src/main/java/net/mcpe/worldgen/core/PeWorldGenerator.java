@@ -18,6 +18,7 @@ public final class PeWorldGenerator {
     private final boolean nativeBiomeSeeds;
     private final long worldSeed;
     private Spawn initialSpawn;
+    private final PeEarlyTerrain earlyTerrain;
     private final PeCaves caves;
     private final PeBiomes biomes;
     private final PeOctaveNoise lower, upper, selector, depth;
@@ -43,15 +44,26 @@ public final class PeWorldGenerator {
     }
 
     public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds, PeRelease release) {
+        this(seed, old, useSpawnBounds, nativeBiomeSeeds, release, !release.hasWorldTypes());
+    }
+
+    public PeWorldGenerator(long seed, boolean old, boolean useSpawnBounds, boolean nativeBiomeSeeds, PeRelease release, boolean nativeEarly) {
         if (!release.supports(old)) throw new IllegalArgumentException(release.id());
         this.release = release;
+        earlyTerrain = nativeEarly && !release.hasWorldTypes() ? new PeEarlyTerrain(seed) : null;
         this.old = old;
         this.useSpawnBounds = useSpawnBounds;
         this.nativeBiomeSeeds = nativeBiomeSeeds;
         this.worldSeed = seed;
         boolean reversedAxes = release.ordinal() >= PeRelease.V0_15_10.ordinal();
-        specialSurfaces = release == PeRelease.V0_11_1 ? null : new PeSpecialSurfaces(seed);
+        specialSurfaces = earlyTerrain != null || release == PeRelease.V0_11_1 ? null : new PeSpecialSurfaces(seed);
         caves = old ? null : new PeCaves(seed, false, reversedAxes);
+        biomes = new PeBiomes(seed, old, nativeBiomeSeeds, release);
+        if (earlyTerrain != null) {
+            lower = upper = selector = depth = null;
+            surface = null;
+            return;
+        }
         PeRandom random = new PeRandom(seed);
         lower = new PeOctaveNoise(random, 16);
         upper = new PeOctaveNoise(random, 16);
@@ -61,7 +73,6 @@ public final class PeWorldGenerator {
         new PeOctaveNoise(random, 10);
         depth = new PeOctaveNoise(random, 16);
         new PeOctaveNoise(random, 8);
-        biomes = new PeBiomes(seed, old, nativeBiomeSeeds, release);
     }
 
     private PeAlphaClimate alphaClimate;
@@ -76,14 +87,46 @@ public final class PeWorldGenerator {
     }
 
     PeBiomes biomes() { return biomes; }
+    public boolean usesNativeEarlyTerrain() { return earlyTerrain != null; }
     public PeRelease release() { return release; }
     public int biomeAt(int x, int z) { return biomes.biomeAt(x, z); }
     public synchronized Spawn initialSpawn() {
+        if (initialSpawn == null && earlyTerrain != null) initialSpawn = findEarlySpawn();
         if (initialSpawn == null) {
             PeBiomes spawnBiomes = nativeBiomeSeeds ? biomes : new PeBiomes(worldSeed, old, true, release);
             initialSpawn = spawnBiomes.initialSpawn();
         }
         return initialSpawn;
+    }
+
+    // Level::setInitialSpawn starts at the center and queries Dimension::isValidSpawn.
+    private Spawn findEarlySpawn() {
+        int x = 128, z = 128;
+        PeRandom random = new PeRandom(1); // Level constructor initializes its own MT with 1.
+        var columns = new java.util.HashMap<Integer, byte[]>();
+        for (int attempt = 0; attempt < 1024; attempt++) {
+            int cx = x >> 4, cz = z >> 4;
+            byte[] blocks = columns.computeIfAbsent(cx + 16 * cz, key -> {
+                byte[] chunk = new byte[16 * 16 * HEIGHT];
+                earlyTerrain.fill(chunk, cx, cz);
+                return chunk;
+            });
+            int base = ((x & 15) * 16 + (z & 15)) * HEIGHT;
+            int y = 63;
+            while (y < 127 && blocks[base + y + 1] != 0) y++;
+            int tile = Byte.toUnsignedInt(blocks[base + y]);
+            if (tile != 0 && tile != 9 && tile != 79) return new Spawn(x, 64, z);
+            x = advanceEarlySpawn(x, random);
+            z = advanceEarlySpawn(z, random);
+        }
+        return new Spawn(128, 64, 128);
+    }
+
+    private static int advanceEarlySpawn(int coordinate, PeRandom random) {
+        coordinate += (random.nextRawInt() & 31) - (random.nextRawInt() & 31);
+        if (coordinate < 4) return coordinate + 32;
+        if (coordinate > 251) return coordinate - 32;
+        return coordinate;
     }
 
     private PeWorldBorderLocation border;
@@ -103,7 +146,8 @@ public final class PeWorldGenerator {
     private synchronized PeWorldBorderLocation defaultBorder() {
         if (!old) return null;
         if (border == null) {
-            Spawn anchor = useSpawnBounds ? initialSpawn() : new Spawn(0, 0, 0);
+            Spawn anchor = earlyTerrain != null ? new Spawn(128, 64, 128)
+                : useSpawnBounds ? initialSpawn() : new Spawn(0, 0, 0);
             border = new PeWorldBorderLocation(anchor.x() & ~15, anchor.z() & ~15);
         }
         return border;
@@ -128,6 +172,10 @@ public final class PeWorldGenerator {
         byte[] metadata = new byte[blocks.length];
         if (!isInsideChunk(chunkX, chunkZ)) {
             return new TerrainChunk(blocks,metadata);
+        }
+        if (earlyTerrain != null) {
+            earlyTerrain.fill(blocks, chunkX, chunkZ);
+            return new TerrainChunk(blocks, metadata);
         }
         float[] densities = densities(chunkX, chunkZ);
         interpolate(blocks, densities);
@@ -235,6 +283,7 @@ public final class PeWorldGenerator {
 
     /** TLS state for lake placement when postProcess immediately follows loadChunk. */
     public synchronized PeRandom lakeRandom(int chunkX,int chunkZ) {
+        if (earlyTerrain != null) return earlyTerrain.fill(new byte[16 * 16 * HEIGHT], chunkX, chunkZ);
         if (caves!=null) return caves.lastSourceRandom(chunkX,chunkZ);
         byte[] blocks=new byte[16*16*HEIGHT];
         interpolate(blocks,densities(chunkX,chunkZ));

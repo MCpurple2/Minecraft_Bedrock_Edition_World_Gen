@@ -146,6 +146,15 @@ public final class PeCustomizeScreen extends Screen {
     }
 
     private Text presetLabel() {
+        return presetLabel(release, old, settings, bedrock);
+    }
+
+    static Text presetLabel(PeRelease release, boolean old, PeContentSettings settings, PeBedrockSettings bedrock) {
+        var defaults = PeContentSettings.DEFAULT.resolve(release, old);
+        if (!settings.flags().equals(defaults.flags()) || !settings.water().equals(defaults.water())
+                || !bedrock.equals(PeBedrockSettings.defaults(release, old, java.util.Optional.empty()))) {
+            return label("preset", Text.literal("Custom").formatted(Formatting.AQUA));
+        }
         return label("preset", Text.literal("Pocket Edition Alpha " + release.id() + (old && release.hasWorldTypes() ? " Finite" : "")).formatted(Formatting.YELLOW));
     }
 

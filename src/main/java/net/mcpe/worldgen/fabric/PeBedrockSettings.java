@@ -42,7 +42,8 @@ public record PeBedrockSettings(boolean allowPortals, boolean syncNether, int si
             core.configureBorder(null);
             return;
         }
-        var anchor = useSpawn ? core.initialSpawn() : new PeWorldGenerator.Spawn(0, 0, 0);
+        var anchor = core.usesNativeEarlyTerrain() ? new PeWorldGenerator.Spawn(128, 64, 128)
+            : useSpawn ? core.initialSpawn() : new PeWorldGenerator.Spawn(0, 0, 0);
         core.configureBorder(new PeWorldBorderLocation(center(minX, anchor.x()), center(minZ, anchor.z()), size * 16));
     }
 

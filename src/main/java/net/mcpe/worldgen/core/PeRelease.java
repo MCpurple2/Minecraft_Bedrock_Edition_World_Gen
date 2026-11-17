@@ -14,6 +14,8 @@ public enum PeRelease {
     public boolean hasWorldTypes() { return Integer.parseInt(id.split("\\.")[1]) >= 9; }
     // ARM builds from 0.15 draw Z first in BlockPos constructors with randomized arguments.
     boolean drawsZFirst() { return compareTo(V0_15_10) >= 0; }
+    /** IDs 39/40 used the ordinary Bush class until Mushroom was introduced in 0.5.0. */
+    public boolean hasBushMushrooms() { return compareTo(V0_4_0) <= 0; }
     public String id() { return id; }
     public boolean supports(boolean finite) { return finite || hasWorldTypes() && this != V0_16_5; }
     public String presetPath(boolean finite) {

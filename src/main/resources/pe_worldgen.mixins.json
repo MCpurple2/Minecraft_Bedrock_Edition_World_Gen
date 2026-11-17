@@ -13,7 +13,8 @@
     "MonumentRoomShuffleMixin",
     "NetherCanyonMixin",
     "PeNetherBoundsMixin",
-    "PeFiniteFluidMixin"
+    "PeFiniteFluidMixin",
+    "PeEarlyMushroomMixin"
   ],
   "injectors": {
     "defaultRequire": 1

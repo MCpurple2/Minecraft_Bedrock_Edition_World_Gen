@@ -23,6 +23,8 @@ final class PeEarlyTrees {
             int radius = conifer ? (dy < bare ? 0 : crown) : (dy == 0 ? 0 : dy >= h - 1 ? 2 : 1);
             for (int dx = -radius; dx <= radius; dx++)
                 for (int dz = -radius; dz <= radius; dz++) {
+                    // Early PE's EmptyLevelChunk returns invisible bedrock outside the map.
+                    if (!w.isInside(x + dx, y + dy, z + dz)) return false;
                     int id = w.getBlock(x + dx, y + dy, z + dz);
                     if (id != 0 && id != 18) return false;
                 }
@@ -78,7 +80,9 @@ final class PeEarlyTrees {
     }
 
     private static void leaf(PePopulationWorld w, int x, int y, int z, int data) {
-        if (!w.solidRender(x, y, z)) w.setBlock(x, y, z, 18, data);
+        // Tile::init registered early leaves as solid for the world generator. An
+        // overlapping crown retains the species of the leaf that grew there first.
+        if (w.getBlock(x, y, z) != 18 && !w.solidRender(x, y, z)) w.setBlock(x, y, z, 18, data);
     }
 
     private static void trunk(PePopulationWorld w, int x, int y, int z, int height, int data) {

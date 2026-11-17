@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.mcpe.worldgen.core.PeWorldGenerator;
 import net.mcpe.worldgen.core.PePopulation;
+import net.mcpe.worldgen.core.PeEarlyOreLayout;
 import net.mcpe.worldgen.core.PeInitialPlayer;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.block.BlockState;
@@ -52,10 +53,13 @@ public final class PeChunkGenerator extends ChunkGenerator {
         Codec.BOOL.optionalFieldOf("native_biome_seeds", false).forGetter(generator -> generator.nativeBiomeSeeds),
         RELEASE_CODEC.optionalFieldOf("pe_version", PeRelease.V0_11_1).forGetter(PeChunkGenerator::release),
         PeContentSettings.CODEC.optionalFieldOf("java_content", PeContentSettings.DEFAULT).forGetter(PeChunkGenerator::settings),
-        PeBedrockSettings.CODEC.optionalFieldOf("bedrock_features").forGetter(g -> java.util.Optional.of(g.bedrock))
-    ).apply(instance, (biome,old,spawn,nativeSeeds,release,settings,bedrock) ->
+        PeBedrockSettings.CODEC.optionalFieldOf("bedrock_features").forGetter(g -> java.util.Optional.of(g.bedrock)),
+        // The first 3.11 package stored this marker for 0.1.3 only.
+        Codec.BOOL.optionalFieldOf("native_013_terrain", false).forGetter(g -> false),
+        Codec.BOOL.optionalFieldOf("native_early_terrain", false).forGetter(g -> g.nativeEarlyTerrain)
+    ).apply(instance, (biome,old,spawn,nativeSeeds,release,settings,bedrock,native013,nativeEarly) ->
         new PeChunkGenerator(biome,old,spawn,nativeSeeds,release,settings,
-            bedrock.orElseGet(() -> PeBedrockSettings.defaults(release,old,settings.portalOverride())))));
+            bedrock.orElseGet(() -> PeBedrockSettings.defaults(release,old,settings.portalOverride())), nativeEarly || (native013 && release == PeRelease.V0_1_3))));
     private final PeContentSettings settings;
     private final PeBedrockSettings bedrock;
     public PeBedrockSettings bedrock() { return bedrock; }
@@ -63,9 +67,11 @@ public final class PeChunkGenerator extends ChunkGenerator {
     private final boolean old;
     private final boolean peSpawn;
     private final boolean nativeBiomeSeeds;
+    private final boolean nativeEarlyTerrain;
     private volatile PeWorldGenerator engine;
     private volatile long worldSeed;
     private volatile PePopulation population;
+    private PeEarlyOreLayout earlyOres;
     private final Map<Long, PeWorldGenerator.TerrainChunk> chunks = new LinkedHashMap<>(64, 0.75f, true) {
         @Override protected boolean removeEldestEntry(Map.Entry<Long, PeWorldGenerator.TerrainChunk> eldest) { return size() > 128; }
     };
@@ -88,6 +94,11 @@ public final class PeChunkGenerator extends ChunkGenerator {
 
     public PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds,
             PeRelease release, PeContentSettings settings, PeBedrockSettings bedrock) {
+        this(biomeSource, old, peSpawn, nativeBiomeSeeds, release, settings, bedrock, !release.hasWorldTypes());
+    }
+
+    private PeChunkGenerator(BiomeSource biomeSource, boolean old, boolean peSpawn, boolean nativeBiomeSeeds,
+            PeRelease release, PeContentSettings settings, PeBedrockSettings bedrock, boolean nativeEarly) {
         super(biomeSource, biome -> PeJavaContent.features(biome, settings.resolve(release,old)));
         this.bedrock = bedrock;
         this.settings = settings.resolve(release,old);
@@ -97,6 +108,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
         this.old = old;
         this.peSpawn = peSpawn;
         this.nativeBiomeSeeds = nativeBiomeSeeds;
+        this.nativeEarlyTerrain = nativeEarly && !release.hasWorldTypes();
     }
 
     public PeContentSettings settings() { return settings; }
@@ -139,10 +151,15 @@ public final class PeChunkGenerator extends ChunkGenerator {
     @Override
     public synchronized StructurePlacementCalculator createStructurePlacementCalculator(RegistryWrapper<StructureSet> structures, NoiseConfig noiseConfig, long seed) {
         worldSeed = seed;
-        engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds, release);
+        engine = new PeWorldGenerator(seed, old, peSpawn, nativeBiomeSeeds, release, nativeEarlyTerrain);
         bedrock.configure(engine, peSpawn);
         population = new PePopulation(seed,old,engine,settings.villages(),settings.flags());
         if (biomeSource instanceof PeBiomeSource peBiomes) peBiomes.attach(engine, seed);
+        var modern = biomeSource instanceof PeBiomeSource pe ? pe.modernTerrain() : null;
+        boolean originalGeology = (modern == null || !modern.changesBlocks())
+            && !settings.has(PeContent.MODERN_ORES) && !settings.enabled(Aquatic.UNDERWATER_CAVE)
+            && !settings.enabled(Aquatic.CANYONS);
+        earlyOres = nativeEarlyTerrain && originalGeology ? new PeEarlyOreLayout(engine, seed) : null;
         chunks.clear();
         modernChunks.clear();
         // Do not run Java stronghold-ring biome searches for a PE-only generator.
@@ -159,7 +176,8 @@ public final class PeChunkGenerator extends ChunkGenerator {
         PeWorldGenerator core = engine();
         // PE generators may own mutable PRNG/scratch state. Keep chunk order from introducing concurrent races.
         long key = ((long)chunkX << 32) | (chunkZ & 0xffffffffL);
-        return chunks.computeIfAbsent(key, ignored -> core.terrainChunk(chunkX, chunkZ));
+        return chunks.computeIfAbsent(key, ignored -> earlyOres != null
+            ? earlyOres.chunk(chunkX, chunkZ) : core.terrainChunk(chunkX, chunkZ));
     }
 
     private final Map<Long,BlockState[]> modernChunks = new LinkedHashMap<>(32,.75f,true) {
@@ -214,8 +232,10 @@ public final class PeChunkGenerator extends ChunkGenerator {
         boolean enabled=world.toServerWorld().getServer().getSaveProperties().getGeneratorOptions().shouldGenerateStructures();
         // Serialize PE's neighboring feature writes without holding the base-generation lock.
         synchronized (current) {
-            current.populate(new FabricPopulationWorld(world,engine()),chunk.getPos().x,chunk.getPos().z,enabled);
-            if (!engine().isInsideChunk(chunk.getPos().x,chunk.getPos().z)) return;
+            int cx = chunk.getPos().x, cz = chunk.getPos().z;
+            if (!engine().isInsideChunk(cx,cz)) return;
+            current.populate(new FabricPopulationWorld(world,engine()), cx, cz, enabled,
+                earlyOres == null ? null : earlyOres.afterOres(cx, cz));
             PeModernOres.generate(world,this,chunk.getPos(),worldSeed,settings);
             PeJavaContent.generateCavesContent(world,this,chunk.getPos(),worldSeed,settings);
             if (settings.overworldContent()) super.generateFeatures(world,chunk,structures);
@@ -244,7 +264,7 @@ public final class PeChunkGenerator extends ChunkGenerator {
 
     @Override public int getWorldHeight() { return 384; }
     @Override public int getMinimumY() { return -64; }
-    @Override public int getSeaLevel() { return PeWorldGenerator.SEA_LEVEL; }
+    @Override public int getSeaLevel() { return nativeEarlyTerrain ? 64 : PeWorldGenerator.SEA_LEVEL; }
 
     @Override
     public int getHeight(int x, int z, Heightmap.Type type, HeightLimitView world, NoiseConfig noise) {
